@@ -1,0 +1,41 @@
+{
+  "name": "syniad",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:lambda": "bash scripts/build-lambda.sh",
+    "typecheck": "tsc --noEmit",
+    "dev": "npm run build && node scripts/local-server.js",
+    "terraform:init": "cd terraform && terraform init",
+    "terraform:plan": "cd terraform && terraform plan",
+    "terraform:apply": "cd terraform && terraform apply",
+    "terraform:destroy": "cd terraform && terraform destroy",
+    "terraform:output": "cd terraform && terraform output",
+    "terraform:workspace": "cd terraform && terraform workspace",
+    "workspace:dev": "cd terraform && terraform workspace select dev || terraform workspace new dev",
+    "workspace:prod": "cd terraform && terraform workspace select prod || terraform workspace new prod",
+    "deploy": "npm run build:lambda && cd terraform && terraform workspace select dev && terraform apply -var='stage=dev' -auto-approve",
+    "deploy:dev": "npm run build:lambda && npm run workspace:dev && cd terraform && terraform apply -var='stage=dev' -auto-approve",
+    "deploy:prod": "npm run build:lambda && npm run workspace:prod && cd terraform && terraform apply -var='stage=prod' -auto-approve"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.922.0",
+    "@aws-sdk/lib-dynamodb": "^3.922.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.157",
+    "@types/node": "^24.9.2",
+    "@types/uuid": "^9.0.8",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,41 @@
+# TypeScript build output
+.build/
+*.js.map
+*.d.ts.map
+
+# Build artifacts
+.serverless/
+.esbuild/
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/*.tfstate.d/
+terraform/lambda-zips/
+terraform/.terraform.tfstate.lock.info
+terraform.tfvars
+terraform.tfvars.*
+
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
