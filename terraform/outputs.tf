@@ -33,8 +33,3 @@ output "custom_domain_url" {
   value       = "https://${aws_apigatewayv2_domain_name.api.domain_name}"
 }
 
-output "terraform_state_bucket" {
-  description = "S3 bucket for Terraform state"
-  value       = aws_s3_bucket.terraform_state.id
-}
-

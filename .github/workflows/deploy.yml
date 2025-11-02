@@ -41,12 +41,8 @@ jobs:
 
       - name: Deploy to Dev
         if: github.ref == 'refs/heads/dev'
-        run: |
-          npm run workspace:dev
-          npm run deploy:dev
+        run: npm run deploy:dev
 
       - name: Deploy to Prod
         if: github.ref == 'refs/heads/main'
-        run: |
-          npm run workspace:prod
-          npm run deploy:prod
+        run: npm run deploy:prod

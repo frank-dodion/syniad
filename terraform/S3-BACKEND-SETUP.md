@@ -10,6 +10,60 @@ This project uses S3 for Terraform remote state storage. The backend is already 
 - **Versioning**: Enabled
 - **State Location**: All state is stored in S3, not locally
 
+## Creating the S3 Backend Bucket
+
+The S3 bucket for Terraform state must be created **before** configuring the Terraform backend. Use these AWS CLI commands:
+
+```bash
+# Get your AWS account ID
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+BUCKET_NAME="syniad-terraform-state-${ACCOUNT_ID}"
+REGION="us-east-1"
+
+# Create the S3 bucket
+# Note: For us-east-1, omit LocationConstraint. For other regions, use:
+# --create-bucket-configuration LocationConstraint=${REGION}
+aws s3api create-bucket \
+  --bucket "${BUCKET_NAME}"
+
+# Enable versioning
+aws s3api put-bucket-versioning \
+  --bucket "${BUCKET_NAME}" \
+  --versioning-configuration Status=Enabled
+
+# Enable encryption
+aws s3api put-bucket-encryption \
+  --bucket "${BUCKET_NAME}" \
+  --server-side-encryption-configuration '{
+    "Rules": [{
+      "ApplyServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "AES256"
+      }
+    }]
+  }'
+
+# Block public access
+aws s3api put-public-access-block \
+  --bucket "${BUCKET_NAME}" \
+  --public-access-block-configuration \
+    "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+```
+
+After creating the bucket, update the `bucket` name in `terraform/main.tf` backend configuration to match your bucket name.
+
+## Backend Configuration
+
+The S3 backend is configured in `terraform/main.tf`:
+
+```hcl
+  backend "s3" {
+    bucket  = "syniad-terraform-state-054919302645"
+    key     = "terraform.tfstate"
+    region  = "us-east-1"
+    encrypt = true
+  }
+```
+
 ## Verify S3 Backend
 
 Check that state is stored in S3:
@@ -50,46 +104,25 @@ Terraform workspaces are automatically supported. Each workspace state is stored
 
 The `env:/` prefix is automatically added by Terraform when using workspaces with S3 backend.
 
-## Backend Configuration
+## Migrating to S3 Backend
 
-The S3 backend is configured in `terraform/main.tf`:
+If you have existing local state and need to migrate to S3:
 
-```hcl
-  backend "s3" {
-    bucket  = "syniad-terraform-state-054919302645"
-    key     = "terraform.tfstate"
-    region  = "us-east-1"
-    encrypt = true
-  }
-```
-
-**Note:** There are outdated setup comments in `terraform/main.tf` above the backend block. These can be ignored - the backend is already active and configured.
-
-## Features
-
-- **Versioning**: Enabled on the S3 bucket (allows state rollback)
-- **Encryption**: AES256 server-side encryption
-- **Public Access**: Blocked for security
-
-## Bootstrap Resources
-
-The S3 bucket and its configuration are managed by Terraform in `terraform/bootstrap-backend.tf`. These resources are part of your infrastructure and are managed like any other Terraform resource.
-
-To see the bucket details:
-
-```bash
-cd terraform
-terraform output terraform_state_bucket
-```
-
-## Initial Setup (Already Complete)
-
-The S3 backend has already been set up. The setup process was:
-
-1. Created S3 bucket with versioning and encryption via `terraform/bootstrap-backend.tf`
-2. Configured backend in `terraform/main.tf`
-3. Migrated state from local files to S3 using `terraform init -migrate-state` (run from `terraform/` directory)
-4. Removed old local state files from `terraform/terraform.tfstate.d/`
+1. Create the bucket using the AWS CLI commands above
+2. Update the backend configuration in `terraform/main.tf` with your bucket name
+3. Initialize and migrate state:
+   ```bash
+   cd terraform
+   terraform init -migrate-state
+   ```
+4. Repeat for each workspace:
+   ```bash
+   terraform workspace select dev
+   terraform init -migrate-state
+   
+   terraform workspace select prod
+   terraform init -migrate-state
+   ```
 
 ## Troubleshooting
 
