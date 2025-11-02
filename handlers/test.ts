@@ -1,8 +1,11 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { extractUserIdentity } from '../lib/auth';
 
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  const user = extractUserIdentity(event);
+  
   return {
     statusCode: 200,
     headers: {
@@ -15,6 +18,11 @@ export const handler = async (
       event: {
         path: event.path,
         httpMethod: event.httpMethod
+      },
+      user: {
+        userId: user.userId,
+        username: user.username,
+        email: user.email
       }
     })
   };

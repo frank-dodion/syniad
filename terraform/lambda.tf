@@ -95,6 +95,16 @@ data "archive_file" "get_game_lambda" {
   excludes = ["node_modules/.cache"]
 }
 
+data "archive_file" "authorizer_lambda" {
+  type        = "zip"
+  source_dir  = "${path.module}/../.build/lambda-packages/authorizer"
+  output_path = "${path.module}/lambda-zips/authorizer.zip"
+  
+  depends_on = [null_resource.build_lambda]
+  
+  excludes = ["node_modules/.cache"]
+}
+
 # Build step - triggers when source files change
 resource "null_resource" "build_lambda" {
   triggers = {
@@ -189,6 +199,27 @@ resource "aws_lambda_function" "get_game" {
   environment {
     variables = {
       GAMES_TABLE = aws_dynamodb_table.games.name
+    }
+  }
+
+  tags = local.common_tags
+}
+
+# Authorizer Lambda function
+resource "aws_lambda_function" "authorizer" {
+  filename         = data.archive_file.authorizer_lambda.output_path
+  function_name    = "${local.service_name}-authorizer"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  runtime         = "nodejs20.x"
+  timeout         = 5
+  memory_size     = 128
+  source_code_hash = data.archive_file.authorizer_lambda.output_base64sha256
+
+  environment {
+    variables = {
+      USER_POOL_ID = aws_cognito_user_pool.users.id
+      USER_POOL_CLIENT_ID = aws_cognito_user_pool_client.web_client.id
     }
   }
 

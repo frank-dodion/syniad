@@ -30,6 +30,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.922.0",
     "@aws-sdk/lib-dynamodb": "^3.922.0",
+    "aws-jwt-verify": "^5.1.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

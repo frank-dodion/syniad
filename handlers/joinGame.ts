@@ -1,11 +1,18 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { getGame, saveGame } from '../lib/db';
+import { extractUserIdentity } from '../lib/auth';
 import { Game, Player } from '../shared/types';
 
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
+    // Extract user identity from authorizer context
+    const user = extractUserIdentity(event);
+    const userId = user.userId;
+    const username = user.username || '';
+    const email = user.email || '';
+
     // Extract gameId from path parameters
     const gameId = event.pathParameters?.gameId;
     
@@ -16,13 +23,20 @@ export const handler = async (
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
         },
-        body: JSON.stringify({ error: 'Missing gameId in path' })
+        body: JSON.stringify({ 
+          error: 'Missing gameId in path',
+          user: {
+            userId: user.userId,
+            username: user.username,
+            email: user.email
+          }
+        })
       };
     }
 
     // Parse request body
     const body = event.body ? JSON.parse(event.body) : {};
-    const playerName: string = body.playerName || 'Player2';
+    const playerName: string = body.playerName || username || email || 'Player2';
     
     // Get the game
     const game = await getGame(gameId);
@@ -34,7 +48,14 @@ export const handler = async (
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
         },
-        body: JSON.stringify({ error: 'Game not found' })
+        body: JSON.stringify({ 
+          error: 'Game not found',
+          user: {
+            userId: user.userId,
+            username: user.username,
+            email: user.email
+          }
+        })
       };
     }
 
@@ -47,7 +68,12 @@ export const handler = async (
           'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({ 
-          error: `Cannot join game. Game status is: ${game.status}` 
+          error: `Cannot join game. Game status is: ${game.status}`,
+          user: {
+            userId: user.userId,
+            username: user.username,
+            email: user.email
+          }
         })
       };
     }
@@ -60,13 +86,40 @@ export const handler = async (
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
         },
-        body: JSON.stringify({ error: 'Game is full (maximum 2 players)' })
+        body: JSON.stringify({ 
+          error: 'Game is full (maximum 2 players)',
+          user: {
+            userId: user.userId,
+            username: user.username,
+            email: user.email
+          }
+        })
+      };
+    }
+
+    // Prevent user from joining their own game
+    if (userId && game.players.some(p => p.userId === userId)) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ 
+          error: 'You are already in this game',
+          user: {
+            userId: user.userId,
+            username: user.username,
+            email: user.email
+          }
+        })
       };
     }
 
     // Add the new player
     const newPlayer: Player = {
       name: playerName,
+      userId: userId,
       playerIndex: 1
     };
     
@@ -97,7 +150,12 @@ export const handler = async (
       body: JSON.stringify({ 
         gameId,
         game,
-        message: game.status === 'active' ? 'Game is now active!' : 'Joined game successfully'
+        message: game.status === 'active' ? 'Game is now active!' : 'Joined game successfully',
+        user: {
+          userId: user.userId,
+          username: user.username,
+          email: user.email
+        }
       })
     };
   } catch (error) {
@@ -109,7 +167,8 @@ export const handler = async (
         'Access-Control-Allow-Origin': '*'
       },
       body: JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        user: extractUserIdentity(event)
       })
     };
   }

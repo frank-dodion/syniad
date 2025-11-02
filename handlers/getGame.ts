@@ -1,10 +1,14 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { getGame } from '../lib/db';
+import { extractUserIdentity } from '../lib/auth';
 
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
+    // Extract user identity from authorizer context
+    const user = extractUserIdentity(event);
+
     // Extract gameId from path parameters
     const gameId = event.pathParameters?.gameId;
     
@@ -15,7 +19,14 @@ export const handler = async (
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
         },
-        body: JSON.stringify({ error: 'Missing gameId in path' })
+        body: JSON.stringify({ 
+          error: 'Missing gameId in path',
+          user: {
+            userId: user.userId,
+            username: user.username,
+            email: user.email
+          }
+        })
       };
     }
 
@@ -29,7 +40,14 @@ export const handler = async (
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
         },
-        body: JSON.stringify({ error: 'Game not found' })
+        body: JSON.stringify({ 
+          error: 'Game not found',
+          user: {
+            userId: user.userId,
+            username: user.username,
+            email: user.email
+          }
+        })
       };
     }
     
@@ -39,7 +57,15 @@ export const handler = async (
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
       },
-      body: JSON.stringify({ gameId, game })
+      body: JSON.stringify({ 
+        gameId, 
+        game,
+        user: {
+          userId: user.userId,
+          username: user.username,
+          email: user.email
+        }
+      })
     };
   } catch (error) {
     console.error('Error getting game:', error);
@@ -50,7 +76,8 @@ export const handler = async (
         'Access-Control-Allow-Origin': '*'
       },
       body: JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        user: extractUserIdentity(event)
       })
     };
   }
