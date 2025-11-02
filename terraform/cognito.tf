@@ -43,6 +43,14 @@ resource "aws_cognito_user_pool_client" "web_client" {
   allowed_oauth_flows                  = ["code", "implicit"]
   allowed_oauth_scopes                 = ["email", "openid", "profile"]
 
+  # Enable admin authentication flows (for testing/script access)
+  explicit_auth_flows = [
+    "ALLOW_USER_PASSWORD_AUTH",
+    "ALLOW_ADMIN_USER_PASSWORD_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH",
+    "ALLOW_USER_SRP_AUTH"
+  ]
+
   # Callback URLs (should be configured per environment)
   callback_urls = var.cognito_callback_urls
   logout_urls   = var.cognito_logout_urls

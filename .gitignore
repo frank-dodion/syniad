@@ -24,6 +24,7 @@ node_modules/
 # Environment variables
 .env
 .env.local
+.cognito-test.env
 
 # IDE
 .vscode/

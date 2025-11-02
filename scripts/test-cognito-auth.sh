@@ -1,7 +1,8 @@
 #!/bin/bash
 # Script to create a test user and get authentication token for API testing
 
-set -e
+# Don't use set -e, we'll handle errors explicitly
+set -o pipefail  # Fail if any command in a pipeline fails
 
 # Colors for output
 RED='\033[0;31m'
@@ -18,17 +19,38 @@ fi
 # Get configuration from Terraform outputs or user input
 echo -e "${YELLOW}=== Cognito Authentication Helper ===${NC}\n"
 
-# Try to get from Terraform outputs
-if [ -f "terraform/terraform.tfstate" ] || [ -f "terraform/.terraform/terraform.tfstate.d/dev/terraform.tfstate" ]; then
-    echo "Attempting to get configuration from Terraform..."
-    cd terraform 2>/dev/null || true
+# Try to get from Terraform outputs (works with S3 backend too)
+if [ -d "terraform" ]; then
+    echo "Attempting to get configuration from Terraform outputs..."
     
+    cd terraform 2>/dev/null || exit 1
+    
+    # Try to get outputs (works regardless of state location - S3 or local)
+    # Using command substitution to capture outputs
     USER_POOL_ID=$(terraform output -raw cognito_user_pool_id 2>/dev/null || echo "")
     CLIENT_ID=$(terraform output -raw cognito_user_pool_client_id 2>/dev/null || echo "")
     REGION=$(terraform output -raw cognito_region 2>/dev/null || echo "")
+    
+    # Always try to get API_URL (it's useful even if not strictly required)
     API_URL=$(terraform output -raw api_url 2>/dev/null || echo "")
+    if [ -z "$API_URL" ]; then
+        # Try alternate output name
+        API_URL=$(terraform output -raw api_endpoint 2>/dev/null || echo "")
+    fi
     
     cd .. 2>/dev/null || true
+    
+    if [ -n "$USER_POOL_ID" ] && [ -n "$CLIENT_ID" ]; then
+        echo -e "${GREEN}✓ Found Cognito configuration from Terraform${NC}"
+        echo "  User Pool ID: $USER_POOL_ID"
+        echo "  Client ID: $CLIENT_ID"
+        echo "  Region: ${REGION:-us-east-1}"
+        echo ""
+    else
+        echo -e "${YELLOW}⚠ Could not auto-detect from Terraform outputs${NC}"
+        echo "  (This is OK - you can enter them manually)"
+        echo ""
+    fi
 fi
 
 # Prompt for missing values
@@ -46,11 +68,13 @@ if [ -z "$REGION" ]; then
 fi
 
 # User credentials
-read -p "Enter username for test user (default: testuser): " USERNAME
-USERNAME=${USERNAME:-testuser}
-
-read -p "Enter email for test user (default: test@example.com): " EMAIL
+# Note: Since Cognito User Pool uses email as username_attributes,
+# the username will be the email address
+read -p "Enter email for test user (this will be the username) (default: test@example.com): " EMAIL
 EMAIL=${EMAIL:-test@example.com}
+
+# Use email as username since Cognito is configured with username_attributes = ["email"]
+USERNAME="$EMAIL"
 
 read -sp "Enter password (min 8 chars, uppercase, lowercase, number): " PASSWORD
 echo ""
@@ -62,28 +86,90 @@ if [ ${#PASSWORD} -lt 8 ]; then
 fi
 
 echo ""
-echo -e "${YELLOW}Creating user...${NC}"
+echo -e "${YELLOW}Creating/updating user...${NC}"
 
-# Create user
-aws cognito-idp admin-create-user \
+# Check if user exists
+USER_EXISTS=$(aws cognito-idp admin-get-user \
+  --user-pool-id "$USER_POOL_ID" \
+  --username "$USERNAME" \
+  --region "$REGION" 2>/dev/null)
+
+if [ $? -eq 0 ]; then
+    echo -e "${YELLOW}User already exists, updating...${NC}"
+    
+    # User exists - confirm and set password
+    aws cognito-idp admin-set-user-password \
+      --user-pool-id "$USER_POOL_ID" \
+      --username "$USERNAME" \
+      --password "$PASSWORD" \
+      --permanent \
+      --region "$REGION" > /dev/null 2>&1 || {
+        echo -e "${YELLOW}Failed to set password, attempting to confirm user first...${NC}"
+        
+        # Try to confirm the user
+        aws cognito-idp admin-confirm-sign-up \
+          --user-pool-id "$USER_POOL_ID" \
+          --username "$USERNAME" \
+          --region "$REGION" > /dev/null 2>&1 || true
+        
+        # Try setting password again
+        aws cognito-idp admin-set-user-password \
+          --user-pool-id "$USER_POOL_ID" \
+          --username "$USERNAME" \
+          --password "$PASSWORD" \
+          --permanent \
+          --region "$REGION" > /dev/null 2>&1 || {
+            echo -e "${RED}Error: Failed to set password. Trying to create fresh user...${NC}"
+            # Delete and recreate
+            aws cognito-idp admin-delete-user \
+              --user-pool-id "$USER_POOL_ID" \
+              --username "$USERNAME" \
+              --region "$REGION" > /dev/null 2>&1
+        }
+    }
+else
+    echo -e "${YELLOW}Creating new user...${NC}"
+fi
+
+# Create user if it doesn't exist or was deleted
+CREATE_USER_OUTPUT=$(aws cognito-idp admin-create-user \
   --user-pool-id "$USER_POOL_ID" \
   --username "$USERNAME" \
   --user-attributes Name=email,Value="$EMAIL" Name=email_verified,Value=true \
   --message-action SUPPRESS \
-  --region "$REGION" > /dev/null 2>&1 || {
-    echo -e "${YELLOW}User might already exist, attempting to set password...${NC}"
-}
+  --region "$REGION" 2>&1)
 
-# Set permanent password
-aws cognito-idp admin-set-user-password \
+CREATE_USER_EXIT=$?
+if [ $CREATE_USER_EXIT -ne 0 ]; then
+    # Check if error is because user already exists
+    if echo "$CREATE_USER_OUTPUT" | grep -q "User already exists"; then
+        echo -e "${YELLOW}User already exists (that's OK, will update password)${NC}"
+    else
+        echo -e "${YELLOW}Note: User creation returned: $CREATE_USER_OUTPUT${NC}"
+    fi
+fi
+
+# Set permanent password (always do this, even for new users)
+SET_PASSWORD_OUTPUT=$(aws cognito-idp admin-set-user-password \
   --user-pool-id "$USER_POOL_ID" \
   --username "$USERNAME" \
   --password "$PASSWORD" \
   --permanent \
-  --region "$REGION" > /dev/null 2>&1 || {
-    echo -e "${RED}Error: Failed to set password. User might need to be confirmed.${NC}"
+  --region "$REGION" 2>&1)
+
+SET_PASSWORD_EXIT=$?
+if [ $SET_PASSWORD_EXIT -ne 0 ]; then
+    echo -e "${RED}Error: Failed to set password${NC}"
+    echo "Error details: $SET_PASSWORD_OUTPUT"
+    echo ""
+    echo "This might be due to:"
+    echo "  - Password doesn't meet policy requirements (min 8 chars, uppercase, lowercase, number)"
+    echo "  - User is in an invalid state"
+    echo ""
+    echo "Try deleting the user first, then run this script again:"
+    echo "  aws cognito-idp admin-delete-user --user-pool-id $USER_POOL_ID --username $USERNAME --region $REGION"
     exit 1
-}
+fi
 
 echo -e "${GREEN}✓ User created/updated${NC}"
 
@@ -91,16 +177,42 @@ echo ""
 echo -e "${YELLOW}Authenticating...${NC}"
 
 # Authenticate and get tokens
+# Try ADMIN_USER_PASSWORD_AUTH first (preferred for admin operations)
+# If that fails, fall back to ADMIN_NO_SRP_AUTH
 AUTH_RESPONSE=$(aws cognito-idp admin-initiate-auth \
   --user-pool-id "$USER_POOL_ID" \
   --client-id "$CLIENT_ID" \
-  --auth-flow ADMIN_NO_SRP_AUTH \
+  --auth-flow ADMIN_USER_PASSWORD_AUTH \
   --auth-parameters USERNAME="$USERNAME",PASSWORD="$PASSWORD" \
   --region "$REGION" 2>&1)
 
-if [ $? -ne 0 ]; then
+AUTH_EXIT=$?
+if [ $AUTH_EXIT -ne 0 ]; then
+    # Try alternative auth flow
+    echo -e "${YELLOW}Trying alternative auth flow...${NC}"
+    AUTH_RESPONSE=$(aws cognito-idp admin-initiate-auth \
+      --user-pool-id "$USER_POOL_ID" \
+      --client-id "$CLIENT_ID" \
+      --auth-flow ADMIN_NO_SRP_AUTH \
+      --auth-parameters USERNAME="$USERNAME",PASSWORD="$PASSWORD" \
+      --region "$REGION" 2>&1)
+    AUTH_EXIT=$?
+fi
+
+if [ $AUTH_EXIT -ne 0 ]; then
     echo -e "${RED}Error: Authentication failed${NC}"
     echo "$AUTH_RESPONSE"
+    echo ""
+    if echo "$AUTH_RESPONSE" | grep -q "Auth flow not enabled"; then
+        echo -e "${YELLOW}The Cognito client needs to be updated to enable admin auth flows.${NC}"
+        echo "Run: cd terraform && terraform apply"
+        echo "This will update the client to allow ADMIN_USER_PASSWORD_AUTH flow."
+    else
+        echo "Possible solutions:"
+        echo "1. The user might need to be confirmed first"
+        echo "2. Check if the password meets Cognito requirements"
+        echo "3. Try using the AWS Console to test the user manually"
+    fi
     exit 1
 fi
 
@@ -129,33 +241,97 @@ echo -e "${GREEN}✓ Authentication successful${NC}"
 echo ""
 echo -e "${GREEN}=== Authentication Success ===${NC}"
 echo ""
-echo -e "${YELLOW}ID Token (use this in Postman Authorization header):${NC}"
-echo "$ID_TOKEN"
-echo ""
 
-if [ -n "$API_URL" ]; then
+# Always show API URL (even if not from Terraform, show how to get it)
+if [ -z "$API_URL" ]; then
     echo -e "${YELLOW}API URL:${NC}"
-    echo "$API_URL"
+    echo "  Get it with: cd terraform && terraform output -raw api_url"
+    echo "  Or: cd terraform && terraform output -raw api_endpoint"
     echo ""
+else
+    echo -e "${YELLOW}API URL:${NC}"
+    echo "  $API_URL"
+    echo ""
+fi
+
+if [ -n "$ID_TOKEN" ] && [ "$ID_TOKEN" != "null" ]; then
+    echo -e "${YELLOW}ID Token (use this in Postman Authorization header):${NC}"
+    echo "  $ID_TOKEN"
+    echo ""
+else
+    echo -e "${RED}Error: ID Token is empty or null${NC}"
+    echo "  Authentication may have failed"
+    exit 1
 fi
 
 echo -e "${YELLOW}Postman Configuration:${NC}"
 echo "1. In Postman, create a new environment"
-echo "2. Add variable 'id_token' with value:"
-echo "   $ID_TOKEN"
+echo "2. Add these variables:"
+if [ -n "$API_URL" ]; then
+    echo "   - 'api_url': $API_URL"
+fi
+echo "   - 'id_token': $ID_TOKEN"
 echo ""
-echo "3. For each request, add header:"
-echo "   Key: Authorization"
-echo "   Value: Bearer {{id_token}}"
+echo "3. For each request:"
+echo "   - URL: {{api_url}}/endpoint"
+echo "   - Header: Authorization: Bearer {{id_token}}"
 echo ""
 echo -e "${YELLOW}Or use Authorization tab:${NC}"
 echo "- Type: Bearer Token"
 echo "- Token: {{id_token}}"
 echo ""
 
+# Output machine-readable format for easy copying
+echo -e "${YELLOW}--- Copy these values (or source from .env file) ---${NC}"
+echo ""
+echo "# To export these variables in your shell:"
+echo "export API_URL=\"$API_URL\""
+echo "export ID_TOKEN=\"$ID_TOKEN\""
+if [ -n "$REFRESH_TOKEN" ] && [ "$REFRESH_TOKEN" != "null" ]; then
+    echo "export REFRESH_TOKEN=\"$REFRESH_TOKEN\""
+fi
+echo ""
+
+# Save to .env file for easy access (only if we have ID_TOKEN)
+ENV_FILE=".cognito-test.env"
+if [ -n "$ID_TOKEN" ] && [ "$ID_TOKEN" != "null" ]; then
+    if command -v jq &> /dev/null; then
+        # Use jq to safely construct .env file with proper escaping
+        jq -n \
+            --arg api_url "$API_URL" \
+            --arg id_token "$ID_TOKEN" \
+            --arg refresh_token "${REFRESH_TOKEN:-}" \
+            --arg date "$(date)" \
+            --raw-output \
+            '"# Cognito Test Credentials\n" +
+             "# Generated by test-cognito-auth.sh on " + $date + "\n" +
+             (if $api_url != "" then "API_URL=" + $api_url + "\n" else "" end) +
+             "ID_TOKEN=" + $id_token + "\n" +
+             (if $refresh_token != "" and $refresh_token != "null" then "REFRESH_TOKEN=" + $refresh_token + "\n" else "" end)' \
+            > "$ENV_FILE"
+    else
+        # Fallback without jq
+        {
+            echo "# Cognito Test Credentials"
+            echo "# Generated by test-cognito-auth.sh on $(date)"
+            [ -n "$API_URL" ] && echo "API_URL=$API_URL"
+            echo "ID_TOKEN=$ID_TOKEN"
+            [ -n "$REFRESH_TOKEN" ] && [ "$REFRESH_TOKEN" != "null" ] && echo "REFRESH_TOKEN=$REFRESH_TOKEN"
+        } > "$ENV_FILE"
+    fi
+    
+    echo -e "${GREEN}✓ Values saved to $ENV_FILE${NC}"
+    echo "  To use: source $ENV_FILE"
+    echo "  Or: export \$(grep -v '^#' $ENV_FILE | xargs)"
+    echo ""
+else
+    echo -e "${RED}⚠ Warning: ID_TOKEN not available, skipping .env file creation${NC}"
+    echo ""
+fi
+
 if [ -n "$REFRESH_TOKEN" ] && [ "$REFRESH_TOKEN" != "null" ]; then
     echo -e "${YELLOW}Refresh Token (save for later):${NC}"
-    echo "$REFRESH_TOKEN"
+    echo "  $REFRESH_TOKEN"
     echo ""
 fi
 
