@@ -1,4 +1,4 @@
-import { APIGatewayProxyEvent, APIGatewayProxyEventV2 } from 'aws-lambda';
+import { APIGatewayProxyEvent, APIGatewayProxyEventV2, APIGatewayProxyEventV2WithLambdaAuthorizer } from 'aws-lambda';
 
 export interface UserIdentity {
   userId?: string;
@@ -10,14 +10,19 @@ export interface UserIdentity {
  * Extract user identity from API Gateway request context
  * Supports both REST API (v1) and HTTP API (v2) event types
  */
-export function extractUserIdentity(event: APIGatewayProxyEvent | APIGatewayProxyEventV2): UserIdentity {
-  const authorizer = event.requestContext.authorizer;
+export function extractUserIdentity(
+  event: APIGatewayProxyEvent | APIGatewayProxyEventV2 | APIGatewayProxyEventV2WithLambdaAuthorizer<any>
+): UserIdentity {
+  // Check if this is a V2 event with authorizer
+  const requestContext = event.requestContext as any;
+  const authorizer = requestContext.authorizer;
   
-  // For HTTP API v2 with payload format 2.0, context is directly on authorizer
-  // For REST API v1, it might be nested under lambda
-  const userId = (authorizer as any)?.userId || (authorizer as any)?.lambda?.userId;
-  const username = (authorizer as any)?.username || (authorizer as any)?.lambda?.username || '';
-  const email = (authorizer as any)?.email || (authorizer as any)?.lambda?.email || '';
+  // For HTTP API v2 with Lambda authorizer (payload format 2.0), context is at authorizer.lambda
+  // For REST API v1, context is directly on authorizer or at authorizer.lambda
+  const lambdaContext = (authorizer as any)?.lambda;
+  const userId = lambdaContext?.userId || (authorizer as any)?.userId;
+  const username = lambdaContext?.username || (authorizer as any)?.username || '';
+  const email = lambdaContext?.email || (authorizer as any)?.email || '';
   
   return {
     userId,
