@@ -46,11 +46,13 @@ export const handler = async (
     const payload = await verifier.verify(token);
 
     // Extract user information from token payload
-    const userId = payload.sub; // Cognito user ID
-    const email = payload.email || '';
-    const username = payload['cognito:username'] || payload.username || '';
+    // Convert to strings to ensure compatibility with APIGatewayAuthorizerResultContext
+    const userId = String(payload.sub || ''); // Cognito user ID
+    const email = payload.email ? String(payload.email) : '';
+    const username = payload['cognito:username'] || payload.username ? String(payload['cognito:username'] || payload.username || '') : '';
 
     // Create context to pass user info to Lambda handlers
+    // Context values must be string, number, boolean, null, or undefined
     const context: APIGatewayAuthorizerResultContext = {
       userId,
       email,
