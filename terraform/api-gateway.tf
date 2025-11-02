@@ -55,7 +55,7 @@ resource "aws_apigatewayv2_authorizer" "api_authorizer" {
     "$request.header.Authorization"
   ]
   authorizer_payload_format_version = "2.0"
-  enable_simple_responses = true
+  enable_simple_responses = false  # Set to false to pass context to Lambda handlers
   name = "${local.service_name}-authorizer"
 }
 
