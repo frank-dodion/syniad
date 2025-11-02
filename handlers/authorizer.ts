@@ -1,4 +1,4 @@
-import { APIGatewayRequestAuthorizerEvent, APIGatewayAuthorizerResult, APIGatewayAuthorizerContext } from 'aws-lambda';
+import { APIGatewayRequestAuthorizerEventV2, APIGatewayAuthorizerResult, APIGatewayAuthorizerResultContext } from 'aws-lambda';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
 
 // Create JWT verifier (will be initialized on first use)
@@ -9,11 +9,11 @@ let verifier: ReturnType<typeof CognitoJwtVerifier.create> | null = null;
  * Validates Cognito JWT tokens from the Authorization header
  */
 export const handler = async (
-  event: APIGatewayRequestAuthorizerEvent
+  event: APIGatewayRequestAuthorizerEventV2
 ): Promise<APIGatewayAuthorizerResult> => {
   // Allow OPTIONS requests (CORS preflight) without authentication
   if (event.requestContext?.http?.method === 'OPTIONS') {
-    return generatePolicy('anonymous', 'Allow', event.methodArn, {});
+    return generatePolicy('anonymous', 'Allow', event.routeArn, {});
   }
 
   const userPoolId = process.env.USER_POOL_ID;
@@ -35,7 +35,7 @@ export const handler = async (
   // Extract JWT token from Authorization header
   const authHeader = event.headers?.authorization || event.headers?.Authorization;
   if (!authHeader) {
-    return generatePolicy('user', 'Deny', event.methodArn, {});
+    return generatePolicy('user', 'Deny', event.routeArn, {});
   }
 
   // Extract token (remove "Bearer " prefix if present)
@@ -51,17 +51,17 @@ export const handler = async (
     const username = payload['cognito:username'] || payload.username || '';
 
     // Create context to pass user info to Lambda handlers
-    const context: APIGatewayAuthorizerContext = {
+    const context: APIGatewayAuthorizerResultContext = {
       userId,
       email,
       username,
     };
 
     // Generate policy allowing access with user context
-    return generatePolicy(userId, 'Allow', event.methodArn, context);
+    return generatePolicy(userId, 'Allow', event.routeArn, context);
   } catch (error) {
     console.error('JWT verification failed:', error);
-    return generatePolicy('user', 'Deny', event.methodArn, {});
+    return generatePolicy('user', 'Deny', event.routeArn, {});
   }
 };
 
@@ -72,7 +72,7 @@ function generatePolicy(
   principalId: string,
   effect: 'Allow' | 'Deny',
   resource: string,
-  context: APIGatewayAuthorizerContext
+  context: APIGatewayAuthorizerResultContext
 ): APIGatewayAuthorizerResult {
   return {
     principalId,
