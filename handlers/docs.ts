@@ -81,12 +81,26 @@ function serveOpenAPISpec(event: APIGatewayProxyEvent): APIGatewayProxyResult {
                    (event.headers?.['x-forwarded-proto'] || 'https');
   const apiBaseUrl = `${protocol}://${host}`;
 
-  // Replace server URLs in spec with actual API URL if needed
-  // This ensures Swagger UI uses the correct server
-  const updatedSpec = specContent.replace(
-    /https?:\/\/[^\s]+/g,
-    apiBaseUrl
-  );
+  // Parse the YAML spec and replace servers array with just the current API URL
+  // This removes the dropdown and uses only the actual deployed URL
+  const yaml = require('yaml');
+  let spec = yaml.parse(specContent);
+  
+  // Replace servers array with just the current API URL
+  spec.servers = [
+    {
+      url: apiBaseUrl,
+      description: 'API Server'
+    }
+  ];
+  
+  // Convert back to YAML
+  const updatedSpec = yaml.stringify(spec, {
+    indent: 2,
+    lineWidth: 0,
+    quotingType: '"',
+    blockQuote: false
+  });
 
   return {
     statusCode: 200,

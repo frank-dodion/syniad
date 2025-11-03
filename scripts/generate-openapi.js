@@ -101,11 +101,7 @@ function generateOpenAPISpec() {
     servers: [
       {
         url: 'https://api.syniad.com',
-        description: 'Production server'
-      },
-      {
-        url: 'http://localhost:3000',
-        description: 'Local development server'
+        description: 'API Server'
       }
     ],
     tags: [
