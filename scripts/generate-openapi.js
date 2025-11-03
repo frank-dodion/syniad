@@ -11,7 +11,7 @@
 
 const fs = require('fs');
 const pathModule = require('path');
-const { parse: parseYaml } = require('yaml');
+const yaml = require('yaml');
 
 // Parse Terraform to extract routes
 function extractRoutesFromTerraform() {
@@ -83,7 +83,7 @@ function generateOpenAPISpec() {
   const specPath = pathModule.join(__dirname, '..', 'docs', 'openapi.yaml');
   if (fs.existsSync(specPath)) {
     try {
-      existingSpec = parseYaml(fs.readFileSync(specPath, 'utf8'));
+      existingSpec = yaml.parse(fs.readFileSync(specPath, 'utf8'));
     } catch (e) {
       // Use defaults if can't parse
     }
@@ -212,9 +212,15 @@ function generateOpenAPISpec() {
       responses: generateResponses(methodLower, openApiPath)
     };
     
-    // Add security if auth required
-    if (authRequired !== false) {
+    // Add security if auth required (only add if authRequired is explicitly true, not undefined or false)
+    // authRequired will be false for routes with authorization_type = "NONE"
+    if (authRequired === true) {
       operation.security = [{ bearerAuth: [] }];
+    }
+    // If authRequired is false or undefined and route is docs, make sure no security
+    if (authRequired === false || (openApiPath.startsWith('/docs') && authRequired !== true)) {
+      // Explicitly no security for public endpoints
+      // Don't add security array at all for public routes
     }
     
     // Add request body for POST/PUT
@@ -312,7 +318,7 @@ function generateOperationId(method, routePath) {
   
   if (fs.existsSync(existingSpecPath)) {
     try {
-      const existing = parseYaml(fs.readFileSync(existingSpecPath, 'utf8'));
+      const existing = yaml.parse(fs.readFileSync(existingSpecPath, 'utf8'));
       if (existing.paths) {
         Object.keys(existing.paths).forEach(pathKey => {
           Object.keys(existing.paths[pathKey]).forEach(methodKey => {
@@ -328,7 +334,7 @@ function generateOperationId(method, routePath) {
         });
       }
     } catch (e) {
-      // Ignore errors
+      // Ignore errors - will generate new operation IDs
     }
   }
   
@@ -358,7 +364,7 @@ function generateOperationId(method, routePath) {
   if (routePath.includes('/player1/')) return 'getGamesByPlayer1';
   if (routePath.includes('/player2/')) return 'getGamesByPlayer2';
   if (routePath === '/docs') return 'getDocs';
-  if (routePath === '/docs/openapi.yaml') return 'getOpenAPISpec';
+  if (routePath === '/docs/openapi.yaml' || routePath.includes('/docs/openapi')) return 'getOpenAPISpec';
   if (routePath === '/test') return 'getTest';
   
   // Generic generation
@@ -641,7 +647,6 @@ try {
   addResponseSchemas(spec);
   
   // Write YAML
-  const yaml = require('yaml');
   const yamlContent = yaml.stringify(spec, {
     indent: 2,
     lineWidth: 0,

@@ -26,13 +26,13 @@
     "deploy": "npm run build:lambda && cd terraform && terraform workspace select dev && terraform apply -var='stage=dev' -auto-approve",
     "deploy:dev": "npm run build:lambda && npm run workspace:dev && cd terraform && terraform apply -var='stage=dev' -auto-approve",
     "deploy:prod": "npm run build:lambda && npm run workspace:prod && cd terraform && terraform apply -var='stage=prod' -auto-approve",
+    "docs:generate": "node scripts/generate-openapi.js",
     "docs:serve": "node scripts/serve-swagger.js",
     "docs:open": "npm run docs:serve",
-    "docs:generate": "node scripts/generate-openapi.js",
     "docs:generate-types": "openapi-typescript docs/openapi.yaml -o shared/openapi-types.ts",
     "docs:validate": "node scripts/validate-openapi.js",
     "docs:check": "npm run docs:generate-types && npm run docs:validate && npm run typecheck",
-    "prebuild": "npm run docs:generate && npm run docs:generate-types"
+    "prebuild": "npm run docs:generate"
   },
   "keywords": [],
   "author": "",
@@ -49,11 +49,12 @@
     "@types/jest": "^29.5.14",
     "@types/node": "^24.9.2",
     "@types/uuid": "^9.0.8",
-    "jest": "^29.7.0",
-    "openapi-typescript": "^6.7.4",
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
+    "jest": "^29.7.0",
+    "openapi-typescript": "^6.7.4",
     "ts-jest": "^29.2.5",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "yaml": "^2.8.1"
   }
 }

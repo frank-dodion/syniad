@@ -10,54 +10,54 @@ export interface paths {
      * Test endpoint
      * @description Returns a test message with user information
      */
-    get: operations["gettest"];
+    get: operations["getTest"];
   };
   "/games": {
     /**
      * Get all games
      * @description Retrieves all games with pagination support
      */
-    get: operations["getgames"];
+    get: operations["getAllGames"];
     /**
      * Create a new game
      * @description Creates a new game with the authenticated user as player1
      */
-    post: operations["postgames"];
+    post: operations["createGame"];
   };
   "/games/{gameId}/join": {
     /**
      * Join a game
      * @description Joins an existing game as player2
      */
-    post: operations["postgamesJoin"];
+    post: operations["joinGame"];
   };
   "/games/{gameId}": {
     /**
      * Get a specific game
      * @description Retrieves details for a specific game by ID
      */
-    get: operations["getgames"];
+    get: operations["getGame"];
   };
   "/games/players/{playerId}": {
     /**
      * Get games for a player
      * @description Retrieves all games where the specified player is either player1 or player2
      */
-    get: operations["getgamesPlayers"];
+    get: operations["getGamesByPlayer"];
   };
   "/games/player1/{player1Id}": {
     /**
      * Get games created by player
      * @description Retrieves all games where the specified player is player1 (games they created)
      */
-    get: operations["getgamesPlayer1"];
+    get: operations["getGamesByPlayer1"];
   };
   "/games/player2/{player2Id}": {
     /**
      * Get games joined by player
      * @description Retrieves all games where the specified player is player2 (games they joined)
      */
-    get: operations["getgamesPlayer2"];
+    get: operations["getGamesByPlayer2"];
   };
   "/docs": {
     /**
@@ -71,7 +71,7 @@ export interface paths {
      * OpenAPI specification
      * @description OpenAPI 3.0 specification in YAML format
      */
-    get: operations["getdocsOpenapi.yaml"];
+    get: operations["getOpenAPISpec"];
   };
 }
 
@@ -202,7 +202,7 @@ export interface operations {
    * Test endpoint
    * @description Returns a test message with user information
    */
-  gettest: {
+  getTest: {
     responses: {
       /** @description Successful response */
       200: {
@@ -219,25 +219,25 @@ export interface operations {
     };
   };
   /**
-   * Get a specific game
-   * @description Retrieves details for a specific game by ID
+   * Get all games
+   * @description Retrieves all games with pagination support
    */
-  getgames: {
+  getAllGames: {
     parameters: {
-      path: {
-        /** @description Unique identifier for the game */
-        gameId: string;
+      query?: {
+        /** @description Maximum number of games to return (1-100) */
+        limit?: number;
+        /** @description Token for pagination (returned from previous request) */
+        nextToken?: string;
       };
     };
     responses: {
       /** @description Successful response */
       200: {
         content: {
-          "application/json": components["schemas"]["GameResponse"];
+          "application/json": components["schemas"]["GamesResponse"];
         };
       };
-      400: components["responses"]["BadRequest"];
-      404: components["responses"]["NotFound"];
       500: components["responses"]["ServerError"];
     };
   };
@@ -245,7 +245,7 @@ export interface operations {
    * Create a new game
    * @description Creates a new game with the authenticated user as player1
    */
-  postgames: {
+  createGame: {
     parameters: {
       query?: {
         /** @description Maximum number of games to return (1-100) */
@@ -278,7 +278,7 @@ export interface operations {
    * Join a game
    * @description Joins an existing game as player2
    */
-  postgamesJoin: {
+  joinGame: {
     parameters: {
       path: {
         /** @description Unique identifier for the game */
@@ -307,10 +307,33 @@ export interface operations {
     };
   };
   /**
+   * Get a specific game
+   * @description Retrieves details for a specific game by ID
+   */
+  getGame: {
+    parameters: {
+      path: {
+        /** @description Unique identifier for the game */
+        gameId: string;
+      };
+    };
+    responses: {
+      /** @description Successful response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["GameResponse"];
+        };
+      };
+      400: components["responses"]["BadRequest"];
+      404: components["responses"]["NotFound"];
+      500: components["responses"]["ServerError"];
+    };
+  };
+  /**
    * Get games for a player
    * @description Retrieves all games where the specified player is either player1 or player2
    */
-  getgamesPlayers: {
+  getGamesByPlayer: {
     parameters: {
       query?: {
         /** @description Maximum number of games to return (1-100) */
@@ -339,7 +362,7 @@ export interface operations {
    * Get games created by player
    * @description Retrieves all games where the specified player is player1 (games they created)
    */
-  getgamesPlayer1: {
+  getGamesByPlayer1: {
     parameters: {
       query?: {
         /** @description Maximum number of games to return (1-100) */
@@ -368,7 +391,7 @@ export interface operations {
    * Get games joined by player
    * @description Retrieves all games where the specified player is player2 (games they joined)
    */
-  getgamesPlayer2: {
+  getGamesByPlayer2: {
     parameters: {
       query?: {
         /** @description Maximum number of games to return (1-100) */
@@ -411,7 +434,7 @@ export interface operations {
    * OpenAPI specification
    * @description OpenAPI 3.0 specification in YAML format
    */
-  "getdocsOpenapi.yaml": {
+  getOpenAPISpec: {
     responses: {
       /** @description Successful response */
       200: {

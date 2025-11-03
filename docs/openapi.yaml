@@ -336,7 +336,7 @@ paths:
         - bearerAuth: []
   /docs:
     get:
-      operationId: getdocs
+      operationId: getDocs
       tags:
         - Docs
       summary: API documentation
