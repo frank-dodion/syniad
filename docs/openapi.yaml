@@ -79,6 +79,19 @@ paths:
           $ref: "#/components/responses/ServerError"
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - scenarioId
+              properties:
+                scenarioId:
+                  type: string
+                  format: uuid
+                  description: ID of the scenario to use for this game
     get:
       operationId: getAllGames
       tags:
@@ -277,6 +290,97 @@ paths:
           $ref: "#/components/responses/ServerError"
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - description
+                - columns
+                - rows
+                - turns
+              properties:
+                title:
+                  type: string
+                  description: Scenario title
+                description:
+                  type: string
+                  description: Scenario description
+                columns:
+                  type: integer
+                  minimum: 1
+                  description: Number of columns in the game map
+                rows:
+                  type: integer
+                  minimum: 1
+                  description: Number of rows in the game map
+                turns:
+                  type: integer
+                  minimum: 1
+                  description: Number of turns in the scenario
+                hexes:
+                  type: array
+                  description: "Optional array of hex terrain definitions. If omitted, a complete grid of clear terrain hexes will be generated for all rows and columns. Format: [{row: number, column: number, terrain: string}]"
+                  items:
+                    type: object
+                    required:
+                      - row
+                      - column
+                      - terrain
+                    properties:
+                      row:
+                        type: integer
+                        minimum: 0
+                        description: Row index (0-based)
+                      column:
+                        type: integer
+                        minimum: 0
+                        description: Column index (0-based)
+                      terrain:
+                        type: string
+                        enum:
+                          - clear
+                          - mountain
+                          - forest
+                          - water
+                          - desert
+                          - swamp
+                        description: Terrain type for this hex
+                  example:
+                    - row: 0
+                      column: 0
+                      terrain: clear
+                    - row: 1
+                      column: 2
+                      terrain: mountain
+                    - row: 5
+                      column: 7
+                      terrain: forest
+              example:
+                title: Eastern Front 1942
+                description: A scenario set on the Eastern Front with varied terrain
+                columns: 12
+                rows: 10
+                turns: 15
+                hexes:
+                  - row: 0
+                    column: 0
+                    terrain: clear
+                  - row: 0
+                    column: 1
+                    terrain: clear
+                  - row: 2
+                    column: 3
+                    terrain: mountain
+                  - row: 4
+                    column: 5
+                    terrain: forest
+                  - row: 6
+                    column: 7
+                    terrain: water
     get:
       operationId: getAllScenarios
       tags:
@@ -476,6 +580,62 @@ paths:
           $ref: "#/components/responses/ServerError"
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: All fields are optional. Only provided fields will be updated.
+              properties:
+                title:
+                  type: string
+                  description: Scenario title
+                description:
+                  type: string
+                  description: Scenario description
+                columns:
+                  type: integer
+                  minimum: 1
+                  description: Number of columns in the game map
+                rows:
+                  type: integer
+                  minimum: 1
+                  description: Number of rows in the game map
+                turns:
+                  type: integer
+                  minimum: 1
+                  description: Number of turns in the scenario
+                hexes:
+                  type:
+                    - array
+                    - "null"
+                  description: "Array of hex terrain definitions, or null to clear. Format: [{row: number, column: number, terrain: string}]"
+                  items:
+                    type: object
+                    required:
+                      - row
+                      - column
+                      - terrain
+                    properties:
+                      row:
+                        type: integer
+                        minimum: 0
+                        description: Row index (0-based)
+                      column:
+                        type: integer
+                        minimum: 0
+                        description: Column index (0-based)
+                      terrain:
+                        type: string
+                        enum:
+                          - clear
+                          - mountain
+                          - forest
+                          - water
+                          - desert
+                          - swamp
+                        description: Terrain type for this hex
     delete:
       operationId: deleteScenario
       tags:

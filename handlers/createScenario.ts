@@ -25,6 +25,22 @@ export const handler = async (
           },
           body: JSON.stringify({ 
             error: 'Invalid JSON in request body',
+            message: 'Request body must be valid JSON',
+            expectedFormat: {
+              title: 'string (required)',
+              description: 'string (required)',
+              columns: 'number (required, minimum 1)',
+              rows: 'number (required, minimum 1)',
+              turns: 'number (required, minimum 1)',
+              hexes: 'array (optional) - [{row: number, column: number, terrain: string}]'
+            },
+            example: {
+              title: 'My Scenario',
+              description: 'A sample scenario',
+              columns: 10,
+              rows: 8,
+              turns: 20
+            },
             user: {
               userId: user.userId,
               username: user.username,
@@ -33,6 +49,38 @@ export const handler = async (
           })
         };
       }
+    } else {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ 
+          error: 'Request body is required',
+          message: 'POST /scenarios requires a JSON request body',
+          expectedFormat: {
+            title: 'string (required)',
+            description: 'string (required)',
+            columns: 'number (required, minimum 1)',
+            rows: 'number (required, minimum 1)',
+            turns: 'number (required, minimum 1)',
+            hexes: 'array (optional) - [{row: number, column: number, terrain: string}]'
+          },
+          example: {
+            title: 'My Scenario',
+            description: 'A sample scenario',
+            columns: 10,
+            rows: 8,
+            turns: 20
+          },
+          user: {
+            userId: user.userId,
+            username: user.username,
+            email: user.email
+          }
+        })
+      };
     }
     
     // Validate required fields
@@ -47,6 +95,23 @@ export const handler = async (
         },
         body: JSON.stringify({ 
           error: 'Missing or invalid title field',
+          message: 'The title field is required and must be a non-empty string',
+          receivedValue: title,
+          expectedFormat: {
+            title: 'string (required)',
+            description: 'string (required)',
+            columns: 'number (required, minimum 1)',
+            rows: 'number (required, minimum 1)',
+            turns: 'number (required, minimum 1)',
+            hexes: 'array (optional) - [{row: number, column: number, terrain: string}]'
+          },
+          example: {
+            title: 'My Scenario',
+            description: 'A sample scenario',
+            columns: 10,
+            rows: 8,
+            turns: 20
+          },
           user: {
             userId: user.userId,
             username: user.username,
@@ -65,6 +130,23 @@ export const handler = async (
         },
         body: JSON.stringify({ 
           error: 'Missing or invalid description field',
+          message: 'The description field is required and must be a non-empty string',
+          receivedValue: description,
+          expectedFormat: {
+            title: 'string (required)',
+            description: 'string (required)',
+            columns: 'number (required, minimum 1)',
+            rows: 'number (required, minimum 1)',
+            turns: 'number (required, minimum 1)',
+            hexes: 'array (optional) - [{row: number, column: number, terrain: string}]'
+          },
+          example: {
+            title: 'My Scenario',
+            description: 'A sample scenario',
+            columns: 10,
+            rows: 8,
+            turns: 20
+          },
           user: {
             userId: user.userId,
             username: user.username,
@@ -82,7 +164,24 @@ export const handler = async (
           'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({ 
-          error: 'Missing or invalid columns field (must be a positive number)',
+          error: 'Missing or invalid columns field',
+          message: 'The columns field is required and must be a positive number (minimum 1)',
+          receivedValue: columns,
+          expectedFormat: {
+            title: 'string (required)',
+            description: 'string (required)',
+            columns: 'number (required, minimum 1)',
+            rows: 'number (required, minimum 1)',
+            turns: 'number (required, minimum 1)',
+            hexes: 'array (optional) - [{row: number, column: number, terrain: string}]'
+          },
+          example: {
+            title: 'My Scenario',
+            description: 'A sample scenario',
+            columns: 10,
+            rows: 8,
+            turns: 20
+          },
           user: {
             userId: user.userId,
             username: user.username,
@@ -100,7 +199,24 @@ export const handler = async (
           'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({ 
-          error: 'Missing or invalid rows field (must be a positive number)',
+          error: 'Missing or invalid rows field',
+          message: 'The rows field is required and must be a positive number (minimum 1)',
+          receivedValue: rows,
+          expectedFormat: {
+            title: 'string (required)',
+            description: 'string (required)',
+            columns: 'number (required, minimum 1)',
+            rows: 'number (required, minimum 1)',
+            turns: 'number (required, minimum 1)',
+            hexes: 'array (optional) - [{row: number, column: number, terrain: string}]'
+          },
+          example: {
+            title: 'My Scenario',
+            description: 'A sample scenario',
+            columns: 10,
+            rows: 8,
+            turns: 20
+          },
           user: {
             userId: user.userId,
             username: user.username,
@@ -118,7 +234,24 @@ export const handler = async (
           'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({ 
-          error: 'Missing or invalid turns field (must be a positive number)',
+          error: 'Missing or invalid turns field',
+          message: 'The turns field is required and must be a positive number (minimum 1)',
+          receivedValue: turns,
+          expectedFormat: {
+            title: 'string (required)',
+            description: 'string (required)',
+            columns: 'number (required, minimum 1)',
+            rows: 'number (required, minimum 1)',
+            turns: 'number (required, minimum 1)',
+            hexes: 'array (optional) - [{row: number, column: number, terrain: string}]'
+          },
+          example: {
+            title: 'My Scenario',
+            description: 'A sample scenario',
+            columns: 10,
+            rows: 8,
+            turns: 20
+          },
           user: {
             userId: user.userId,
             username: user.username,

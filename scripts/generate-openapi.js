@@ -212,7 +212,7 @@ function generateOpenAPISpec() {
     // Add request body for POST/PUT only if one is generated
     // If no request body is generated, ensure it's not present (override preserved content)
     if (['post', 'put', 'patch'].includes(methodLower)) {
-      const generatedRequestBody = generateRequestBody(openApiPath, method);
+      const generatedRequestBody = generateRequestBody(openApiPath, methodLower);
       if (generatedRequestBody) {
         operation.requestBody = generatedRequestBody;
       } else {
@@ -409,8 +409,27 @@ function generateRequestBody(path, method) {
                       description: 'Terrain type for this hex'
                     }
                   }
-                }
+                },
+                example: [
+                  { row: 0, column: 0, terrain: 'clear' },
+                  { row: 1, column: 2, terrain: 'mountain' },
+                  { row: 5, column: 7, terrain: 'forest' }
+                ]
               }
+            },
+            example: {
+              title: 'Eastern Front 1942',
+              description: 'A scenario set on the Eastern Front with varied terrain',
+              columns: 12,
+              rows: 10,
+              turns: 15,
+              hexes: [
+                { row: 0, column: 0, terrain: 'clear' },
+                { row: 0, column: 1, terrain: 'clear' },
+                { row: 2, column: 3, terrain: 'mountain' },
+                { row: 4, column: 5, terrain: 'forest' },
+                { row: 6, column: 7, terrain: 'water' }
+              ]
             }
           }
         }
