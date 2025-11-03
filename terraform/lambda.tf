@@ -40,9 +40,13 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
         Resource = [
           aws_dynamodb_table.games.arn,
           "${aws_dynamodb_table.games.arn}/*",
+          "${aws_dynamodb_table.games.arn}/index/*",
           aws_dynamodb_table.player_games.arn,
           "${aws_dynamodb_table.player_games.arn}/*",
-          "${aws_dynamodb_table.player_games.arn}/index/*"
+          "${aws_dynamodb_table.player_games.arn}/index/*",
+          aws_dynamodb_table.scenarios.arn,
+          "${aws_dynamodb_table.scenarios.arn}/*",
+          "${aws_dynamodb_table.scenarios.arn}/index/*"
         ]
       },
       {

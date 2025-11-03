@@ -82,6 +82,25 @@ resource "aws_dynamodb_table" "scenarios" {
     type = "S"
   }
 
+  attribute {
+    name = "queryKey"
+    type = "S"
+  }
+
+  attribute {
+    name = "createdAt"
+    type = "S"
+  }
+
+  # GSI to query all scenarios efficiently (without Scan)
+  # Uses constant partition key "ALL_SCENARIOS" and sorts by createdAt
+  global_secondary_index {
+    name            = "queryKey-createdAt-index"
+    hash_key        = "queryKey"
+    range_key       = "createdAt"
+    projection_type = "ALL" # Include all attributes in the index
+  }
+
   tags = merge(local.common_tags, {
     Name = "${local.service_name}-scenarios"
   })

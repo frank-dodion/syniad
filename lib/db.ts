@@ -493,9 +493,15 @@ export async function deleteGame(gameId: string): Promise<void> {
  * Save a scenario to the database
  */
 export async function saveScenario(scenario: Scenario): Promise<void> {
+  // Ensure queryKey is set for efficient querying (avoid Scan)
+  const scenarioWithQueryKey: Scenario = {
+    ...scenario,
+    queryKey: scenario.queryKey || 'ALL_SCENARIOS'
+  };
+  
   if (useMock) {
     // Local mode: use in-memory storage
-    mockScenarios.set(scenario.scenarioId, scenario);
+    mockScenarios.set(scenarioWithQueryKey.scenarioId, scenarioWithQueryKey);
     return Promise.resolve();
   }
   
@@ -503,7 +509,7 @@ export async function saveScenario(scenario: Scenario): Promise<void> {
   await dynamodbClient!.send(
     new PutCommand({
       TableName: SCENARIOS_TABLE,
-      Item: scenario
+      Item: scenarioWithQueryKey
     })
   );
 }
@@ -537,8 +543,10 @@ export async function updateScenario(scenario: Scenario): Promise<void> {
     if (!mockScenarios.has(scenario.scenarioId)) {
       throw new Error('Scenario not found');
     }
+    const existing = mockScenarios.get(scenario.scenarioId)!;
     mockScenarios.set(scenario.scenarioId, {
       ...scenario,
+      queryKey: scenario.queryKey || existing.queryKey || 'ALL_SCENARIOS', // Preserve queryKey
       updatedAt: new Date().toISOString()
     });
     return Promise.resolve();
@@ -556,6 +564,7 @@ export async function updateScenario(scenario: Scenario): Promise<void> {
       TableName: SCENARIOS_TABLE,
       Item: {
         ...scenario,
+        queryKey: scenario.queryKey || existing.queryKey || 'ALL_SCENARIOS', // Preserve queryKey
         updatedAt: new Date().toISOString()
       }
     })
@@ -595,8 +604,9 @@ export async function deleteScenario(scenarioId: string): Promise<void> {
  */
 export async function getAllScenarios(limit?: number, nextToken?: string): Promise<PaginatedResult<Scenario>> {
   if (useMock) {
-    // Local mode: return all scenarios from mock storage
-    const allScenarios = Array.from(mockScenarios.values());
+    // Local mode: return all scenarios from mock storage, sorted by createdAt
+    const allScenarios = Array.from(mockScenarios.values())
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     const maxLimit = limit || 100;
     const scenarios = allScenarios.slice(0, maxLimit);
     return {
@@ -606,24 +616,30 @@ export async function getAllScenarios(limit?: number, nextToken?: string): Promi
     };
   }
   
-  // Production: use real DynamoDB with AWS SDK v3
-  const scanLimit = limit ? Math.min(limit, 100) : 100; // DynamoDB scan limit is 1MB, but we'll limit to 100 items
-  const scanParams: any = {
+  // Production: use real DynamoDB with AWS SDK v3 - Query on GSI instead of Scan
+  const queryLimit = limit ? Math.min(limit, 100) : 100;
+  const queryParams: any = {
     TableName: SCENARIOS_TABLE,
-    Limit: scanLimit
+    IndexName: 'queryKey-createdAt-index',
+    KeyConditionExpression: 'queryKey = :queryKey',
+    ExpressionAttributeValues: {
+      ':queryKey': 'ALL_SCENARIOS'
+    },
+    Limit: queryLimit,
+    ScanIndexForward: false // Sort by createdAt descending (newest first)
   };
   
   // Handle pagination token
   if (nextToken) {
     try {
       const decoded = JSON.parse(Buffer.from(nextToken, 'base64').toString('utf-8'));
-      scanParams.ExclusiveStartKey = decoded;
+      queryParams.ExclusiveStartKey = decoded;
     } catch (e) {
       console.error('Error decoding nextToken:', e);
     }
   }
   
-  const result = await dynamodbClient!.send(new ScanCommand(scanParams));
+  const result = await dynamodbClient!.send(new QueryCommand(queryParams));
   const scenarios = (result.Items || []) as Scenario[];
   
   // Generate nextToken if there are more items

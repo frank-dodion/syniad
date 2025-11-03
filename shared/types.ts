@@ -16,6 +16,7 @@ export interface Scenario {
   hexes?: Hex[]; // Optional array of hex terrain definitions
   createdAt: string;
   updatedAt?: string;
+  queryKey?: string; // Index field: constant "ALL_SCENARIOS" for efficient querying without Scan
 }
 
 export interface Game {
