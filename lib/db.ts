@@ -166,6 +166,60 @@ export async function saveGame(game: Game): Promise<void> {
   }
 }
 
+/**
+ * Transform old format (players array) to new format (player1/player2)
+ * Ensures consistent player1/player2 structure in all responses
+ */
+function normalizeGame(item: any): Game | null {
+  if (!item) return null;
+  
+  // Already in correct new format - ensure no players array exists
+  if (item.player1 && !item.players) {
+    // Remove any stray players property if it exists
+    const { players, ...cleanGame } = item;
+    return cleanGame as Game;
+  }
+  
+  // Old format with players array - convert to new format
+  if (item.players && Array.isArray(item.players)) {
+    // Find player1 (index 1 or 0) and player2 (index 2)
+    const player1 = item.players.find((p: any) => p.playerIndex === 1 || p.playerIndex === 0);
+    const player2 = item.players.find((p: any) => p.playerIndex === 2);
+    
+    if (!player1) return null; // Invalid data
+    
+    // Build new format game, explicitly excluding players array
+    const normalized: any = {
+      gameId: item.gameId,
+      status: item.status,
+      player1: {
+        name: player1.name,
+        userId: player1.userId
+      },
+      player1Id: item.player1Id || player1.userId,
+      turnNumber: item.turnNumber,
+      createdAt: item.createdAt
+    };
+    
+    // Add player2 if it exists
+    if (player2) {
+      normalized.player2 = {
+        name: player2.name,
+        userId: player2.userId
+      };
+      normalized.player2Id = item.player2Id || player2.userId;
+    }
+    
+    // Copy other fields (updatedAt, etc.)
+    if (item.updatedAt) normalized.updatedAt = item.updatedAt;
+    
+    return normalized as Game;
+  }
+  
+  // Missing both formats - invalid data
+  return null;
+}
+
 export async function getGame(gameId: string): Promise<Game | undefined> {
   if (useMock) {
     // Local mode: use in-memory storage
@@ -180,7 +234,10 @@ export async function getGame(gameId: string): Promise<Game | undefined> {
     })
   );
   
-  return result.Item as Game | undefined;
+  if (!result.Item) return undefined;
+  
+  // Normalize the game data (handle old format)
+  return normalizeGame(result.Item) || undefined;
 }
 
 export async function getAllGames(limit?: number, nextToken?: string): Promise<PaginatedResult<Game>> {
@@ -216,7 +273,9 @@ export async function getAllGames(limit?: number, nextToken?: string): Promise<P
     new ScanCommand(scanParams)
   );
   
-  const games = (result.Items || []) as Game[];
+  const games = (result.Items || [])
+    .map(item => normalizeGame(item))
+    .filter((game): game is Game => game !== null);
   const hasMore = !!result.LastEvaluatedKey;
   const nextTokenValue = hasMore 
     ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
@@ -295,7 +354,9 @@ export async function getGamesByPlayer(userId: string, limit?: number, nextToken
     })
   );
   
-  const games = (batchGetResult.Responses?.[GAMES_TABLE] || []) as Game[];
+  const games = (batchGetResult.Responses?.[GAMES_TABLE] || [])
+    .map(item => normalizeGame(item))
+    .filter((game): game is Game => game !== null);
   const hasMore = !!playerGamesQuery.LastEvaluatedKey;
   const nextTokenValue = hasMore 
     ? Buffer.from(JSON.stringify(playerGamesQuery.LastEvaluatedKey)).toString('base64')
@@ -350,7 +411,9 @@ export async function getGamesByPlayer1(player1Id: string, limit?: number, nextT
     new QueryCommand(queryParams)
   );
   
-  const games = (result.Items || []) as Game[];
+  const games = (result.Items || [])
+    .map(item => normalizeGame(item))
+    .filter((game): game is Game => game !== null);
   const hasMore = !!result.LastEvaluatedKey;
   const nextTokenValue = hasMore 
     ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
@@ -405,7 +468,9 @@ export async function getGamesByPlayer2(player2Id: string, limit?: number, nextT
     new QueryCommand(queryParams)
   );
   
-  const games = (result.Items || []) as Game[];
+  const games = (result.Items || [])
+    .map(item => normalizeGame(item))
+    .filter((game): game is Game => game !== null);
   const hasMore = !!result.LastEvaluatedKey;
   const nextTokenValue = hasMore 
     ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
