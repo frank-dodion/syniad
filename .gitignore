@@ -25,9 +25,15 @@ node_modules/
 .env
 .env.local
 .cognito-test.env
+api-tests/.env
+
+# REST Client - .env file contains tokens (gitignored for security)
+# All .http files are safe to commit (they use {{$dotenv VAR}} syntax, no tokens stored)
 
 # IDE
+# .vscode/settings.json contains REST Client tokens (gitignored for security)
 .vscode/
+!.vscode/settings.json.example
 .idea/
 *.swp
 *.swo

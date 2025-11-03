@@ -1,7 +1,9 @@
 export interface Game {
   gameId: string;
   status: 'waiting' | 'active' | 'finished';
-  players: Player[];
+  player1: Player; // Required: Creator (Player 1)
+  player2?: Player; // Optional: Second player (Player 2) - not set until someone joins
+  creatorId: string; // Index: Creator's userId (always player1.userId) for efficient "games created by" queries
   turnNumber: number;
   createdAt: string;
   updatedAt?: string;
@@ -9,8 +11,8 @@ export interface Game {
 
 export interface Player {
   name: string;
-  userId?: string;
-  playerIndex?: number;
+  userId: string; // Required: Cognito sub (unique, immutable identifier)
+  // Note: playerIndex is implicit - player1 is always index 1, player2 is always index 2
 }
 
 export interface GameDefinition {

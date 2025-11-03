@@ -46,6 +46,15 @@ resource "aws_apigatewayv2_integration" "get_game" {
   integration_method = "POST"
 }
 
+# API Gateway Integration for GetAllGames
+resource "aws_apigatewayv2_integration" "get_all_games" {
+  api_id           = aws_apigatewayv2_api.api.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.get_all_games.invoke_arn
+  integration_method = "POST"
+}
+
+
 # API Gateway Authorizer
 resource "aws_apigatewayv2_authorizer" "api_authorizer" {
   api_id           = aws_apigatewayv2_api.api.id
@@ -56,6 +65,8 @@ resource "aws_apigatewayv2_authorizer" "api_authorizer" {
   ]
   authorizer_payload_format_version = "2.0"
   enable_simple_responses = false  # Set to false to pass context to Lambda handlers
+  # Disable caching to debug 403 issues (set to 0 to disable, default is 300)
+  authorizer_result_ttl_in_seconds = 0  # No caching - every request goes through authorizer
   name = "${local.service_name}-authorizer"
 }
 
@@ -95,7 +106,17 @@ resource "aws_apigatewayv2_route" "get_game" {
   authorization_type = "CUSTOM"
 }
 
+# API Gateway Route for GetAllGames (also handles query parameter for playerId)
+resource "aws_apigatewayv2_route" "get_all_games" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /games"
+  target    = "integrations/${aws_apigatewayv2_integration.get_all_games.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.api_authorizer.id
+  authorization_type = "CUSTOM"
+}
+
 # API Gateway Stage
+# auto_deploy = true ensures changes are automatically deployed when routes/integrations change
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.api.id
   name        = var.stage
@@ -105,6 +126,16 @@ resource "aws_apigatewayv2_stage" "default" {
     throttling_rate_limit  = 100
     throttling_burst_limit = 50
   }
+
+  # Ensure routes are created before stage deployment
+  depends_on = [
+    aws_apigatewayv2_route.test,
+    aws_apigatewayv2_route.create_game,
+    aws_apigatewayv2_route.join_game,
+    aws_apigatewayv2_route.get_game,
+    aws_apigatewayv2_route.get_all_games,
+    aws_apigatewayv2_authorizer.api_authorizer
+  ]
 
   tags = local.common_tags
 }
@@ -141,6 +172,15 @@ resource "aws_lambda_permission" "get_game_api_gw" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
 }
+
+resource "aws_lambda_permission" "get_all_games_api_gw" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.get_all_games.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
+}
+
 
 # Lambda permission for API Gateway to invoke authorizer
 resource "aws_lambda_permission" "authorizer_api_gw" {

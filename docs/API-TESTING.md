@@ -1,309 +1,204 @@
 # API Testing Guide
 
-This guide explains how to test the Syniad API using REST clients like Postman before building the UI.
+This guide explains how to test the Syniad API using bash scripts with curl and jq.
 
 ## Prerequisites
 
 1. **AWS CLI** installed and configured with credentials
-2. **Postman** (or similar REST client)
-3. **Cognito User Pool** deployed (get values from Terraform outputs)
+2. **curl** (usually pre-installed on macOS/Linux)
+3. **jq** installed: `brew install jq` (macOS) or `apt-get install jq` (Linux)
+4. **Cognito User Pool** deployed (get values from Terraform outputs)
 
-## Step 1: Get Cognito Configuration
+## Running Scripts in VS Code/Cursor
 
-After deploying, get the Cognito configuration:
+### Option 1: Code Runner Extension (Recommended)
 
-```bash
-cd terraform
-terraform output cognito_user_pool_id
-terraform output cognito_user_pool_client_id
-terraform output cognito_region
-terraform output api_url
-```
+Install the **Code Runner** extension to run scripts with a button click:
 
-## Step 2: Create a Test User
+1. **Install Code Runner**:
+   - Press `Cmd+Shift+X` (Mac) or `Ctrl+Shift+X` (Windows/Linux)
+   - Search for **"Code Runner"** by Jun Han
+   - Extension ID: `formulahendry.code-runner`
+   - Click **Install**
 
-### Option A: Using AWS CLI (Recommended)
+2. **Run scripts**:
+   - Open any `.sh` file (e.g., `api-tests/test.sh`)
+   - Click the **▶ Run Code** button (top right of editor)
+   - Or press `Ctrl+Alt+N` (Windows/Linux) or `Cmd+Alt+N` (Mac)
+   - Output appears in the integrated terminal
 
-```bash
-# Set variables
-USER_POOL_ID="<your-user-pool-id>"
-REGION="<your-region>"
-USERNAME="testuser"
-EMAIL="test@example.com"
-PASSWORD="TestPass123!"
+### Option 2: Integrated Terminal
 
-# Create user
-aws cognito-idp admin-create-user \
-  --user-pool-id $USER_POOL_ID \
-  --username $USERNAME \
-  --user-attributes Name=email,Value=$EMAIL Name=email_verified,Value=true \
-  --message-action SUPPRESS \
-  --region $REGION
+Or use the built-in terminal (no extension needed):
 
-# Set permanent password (skip temporary password)
-aws cognito-idp admin-set-user-password \
-  --user-pool-id $USER_POOL_ID \
-  --username $USERNAME \
-  --password $PASSWORD \
-  --permanent \
-  --region $REGION
-```
+1. Press `` Ctrl+` `` (backtick) to open terminal
+2. Run: `./api-tests/test.sh`
 
-### Option B: Using the Test Script
+### Optional: ShellCheck Extension
 
-See `scripts/test-cognito-auth.sh` for an automated script.
+For syntax checking and linting:
+- Search for **"ShellCheck"** in Extensions
+- Provides error checking and warnings for bash scripts
 
-## Step 3: Get Authentication Token
+## Quick Start
 
-### Using AWS CLI
+### Step 1: Get Your API Credentials
+
+Run the helper script to create a test user and get your authentication token:
 
 ```bash
-# Authenticate and get tokens
-aws cognito-idp admin-initiate-auth \
-  --user-pool-id $USER_POOL_ID \
-  --client-id $CLIENT_ID \
-  --auth-flow ADMIN_NO_SRP_AUTH \
-  --auth-parameters USERNAME=$USERNAME,PASSWORD=$PASSWORD \
-  --region $REGION
+./scripts/test-cognito-auth.sh
 ```
 
-This returns:
-```json
-{
-  "AuthenticationResult": {
-    "IdToken": "eyJraWQiOiJ...",
-    "AccessToken": "eyJraWQiOiJ...",
-    "RefreshToken": "eyJjdHki..."
-  }
-}
-```
+The script will:
+- Create/update a test user in Cognito
+- Get an authentication token
+- Automatically populate your `.env` file with the token and API URL
 
-**Copy the `IdToken` value** - this is what you'll use in Postman.
+### Step 2: Test the API
 
-### Using Postman's OAuth 2.0
-
-1. Create a new request in Postman
-2. Go to **Authorization** tab
-3. Select **OAuth 2.0**
-4. Configure:
-   - **Grant Type**: Authorization Code
-   - **Auth URL**: `https://<cognito-domain>.auth.<region>.amazoncognito.com/oauth2/authorize`
-   - **Access Token URL**: `https://<cognito-domain>.auth.<region>.amazoncognito.com/oauth2/token`
-   - **Client ID**: Your Cognito Client ID
-   - **Client Secret**: (leave blank - we set `generate_secret = false`)
-   - **Scope**: `openid email profile`
-   - **State**: (leave blank)
-5. Click **Get New Access Token**
-6. Use the **ID Token** (not Access Token) in API requests
-
-## Step 4: Configure Postman
-
-### Set Environment Variables
-
-Create a Postman environment with:
-- `id_token`: Your Cognito ID token
-- `api_url`: Your API Gateway URL (from Terraform output)
-- `game_id`: (will be set after creating a game)
-
-### Set Authorization Header
-
-For each request:
-1. Go to **Headers** tab
-2. Add header:
-   - **Key**: `Authorization`
-   - **Value**: `Bearer {{id_token}}`
-
-Or use **Authorization** tab:
-1. Select **Bearer Token**
-2. Token: `{{id_token}}`
-
-## Step 5: Test API Endpoints
-
-### 1. Test Endpoint (GET)
-
-**Request:**
-```
-GET {{api_url}}/test
-```
-
-**Headers:**
-```
-Authorization: Bearer {{id_token}}
-```
-
-**Expected Response:**
-```json
-{
-  "message": "Hello from TypeScript!",
-  "timestamp": "2024-01-01T12:00:00.000Z",
-  "event": {
-    "path": "/test",
-    "httpMethod": "GET"
-  },
-  "user": {
-    "userId": "cognito-user-id",
-    "username": "testuser",
-    "email": "test@example.com"
-  }
-}
-```
-
-### 2. Create Game (POST)
-
-**Request:**
-```
-POST {{api_url}}/games
-```
-
-**Headers:**
-```
-Authorization: Bearer {{id_token}}
-Content-Type: application/json
-```
-
-**Body (JSON):**
-```json
-{
-  "playerName": "Test Player"
-}
-```
-
-**Expected Response:**
-```json
-{
-  "gameId": "123e4567-e89b-12d3-a456-426614174000",
-  "game": {
-    "gameId": "123e4567-e89b-12d3-a456-426614174000",
-    "status": "waiting",
-    "players": [
-      {
-        "name": "Test Player",
-        "userId": "cognito-user-id",
-        "playerIndex": 0
-      }
-    ],
-    "turnNumber": 1,
-    "createdAt": "2024-01-01T12:00:00.000Z"
-  },
-  "user": {
-    "userId": "cognito-user-id",
-    "username": "testuser",
-    "email": "test@example.com"
-  }
-}
-```
-
-**Save `gameId` to your environment variable `{{game_id}}`**
-
-### 3. Get Game (GET)
-
-**Request:**
-```
-GET {{api_url}}/games/{{game_id}}
-```
-
-**Headers:**
-```
-Authorization: Bearer {{id_token}}
-```
-
-**Expected Response:**
-```json
-{
-  "gameId": "123e4567-e89b-12d3-a456-426614174000",
-  "game": {
-    "gameId": "123e4567-e89b-12d3-a456-426614174000",
-    "status": "waiting",
-    "players": [...],
-    "turnNumber": 1,
-    "createdAt": "2024-01-01T12:00:00.000Z"
-  },
-  "user": {
-    "userId": "cognito-user-id",
-    "username": "testuser",
-    "email": "test@example.com"
-  }
-}
-```
-
-### 4. Join Game (POST)
-
-**Request:**
-```
-POST {{api_url}}/games/{{game_id}}/join
-```
-
-**Headers:**
-```
-Authorization: Bearer {{id_token}}
-Content-Type: application/json
-```
-
-**Body (JSON):**
-```json
-{
-  "playerName": "Second Player"
-}
-```
-
-**Expected Response:**
-```json
-{
-  "gameId": "123e4567-e89b-12d3-a456-426614174000",
-  "game": {
-    "gameId": "123e4567-e89b-12d3-a456-426614174000",
-    "status": "active",
-    "players": [
-      {
-        "name": "Test Player",
-        "userId": "creator-user-id",
-        "playerIndex": 0
-      },
-      {
-        "name": "Second Player",
-        "userId": "joiner-user-id",
-        "playerIndex": 1
-      }
-    ],
-    "turnNumber": 1,
-    "createdAt": "2024-01-01T12:00:00.000Z",
-    "updatedAt": "2024-01-01T12:01:00.000Z"
-  },
-  "message": "Game is now active!",
-  "user": {
-    "userId": "joiner-user-id",
-    "username": "testuser2",
-    "email": "test2@example.com"
-  }
-}
-```
-
-## Token Refresh
-
-Cognito ID tokens expire after 24 hours (as configured). To refresh:
+All test scripts automatically source the `.env` file to load credentials:
 
 ```bash
-# Use the refresh token from the initial authentication
-aws cognito-idp admin-initiate-auth \
-  --user-pool-id $USER_POOL_ID \
-  --client-id $CLIENT_ID \
-  --auth-flow REFRESH_TOKEN_AUTH \
-  --auth-parameters REFRESH_TOKEN=$REFRESH_TOKEN \
-  --region $REGION
+# Test endpoint
+./api-tests/test.sh
+
+# Create a game
+./api-tests/create-game.sh "My Player Name"
+
+# Get game details (gameId from create-game.sh output)
+./api-tests/get-game.sh <gameId>
+
+# Join a game
+./api-tests/join-game.sh <gameId> "Second Player"
+
+# Chained workflow: create then join automatically
+./api-tests/create-and-join-game.sh "Player 1" "Player 2"
 ```
+
+## Available Scripts
+
+### `test.sh` - Test Endpoint
+Verifies authentication works:
+
+```bash
+./api-tests/test.sh
+```
+
+### `create-game.sh` - Create a Game
+Creates a new game and returns the gameId:
+
+```bash
+./api-tests/create-game.sh [playerName]
+```
+
+If `playerName` is not provided, defaults to "Test Player".
+
+**Output:** Displays the gameId. You can update `.env` with:
+```bash
+sed -i '' 's/^GAME_ID=.*/GAME_ID=<gameId>/' .env
+```
+
+### `get-game.sh` - Get Game Details
+Retrieves game details:
+
+```bash
+./api-tests/get-game.sh [gameId]
+```
+
+If `gameId` is not provided, uses `GAME_ID` from `.env` file.
+
+### `join-game.sh` - Join a Game
+Joins an existing game:
+
+```bash
+./api-tests/join-game.sh [gameId] [playerName]
+```
+
+If `gameId` is not provided, uses `GAME_ID` from `.env` file.
+If `playerName` is not provided, defaults to "Second Player".
+
+### `create-and-join-game.sh` - Chained Workflow
+Creates a game and automatically joins it:
+
+```bash
+./api-tests/create-and-join-game.sh [player1Name] [player2Name]
+```
+
+This demonstrates chaining: creates a game, extracts the gameId, then joins it automatically.
+
+## How It Works
+
+1. **Authentication script** (`test-cognito-auth.sh`) writes credentials to `.env` file (gitignored)
+2. **All test scripts** automatically source the `.env` file at the start
+3. **Scripts use curl** to make HTTP requests with the loaded credentials
+4. **jq** formats JSON responses for readability
+
+**Security:**
+- `.env` file is **gitignored** (contains tokens) - never commit it!
+- All scripts are **safe to commit** (they source .env, no tokens stored)
+- Variables are loaded fresh from `.env` on every script run (no caching!)
+
+## Testing with Multiple Users
+
+To test multiplayer functionality:
+
+1. **Create User 1**:
+   ```bash
+   ./scripts/test-cognito-auth.sh
+   ```
+   Use email: `player1@example.com`
+
+2. **Create Game** with User 1's token:
+   ```bash
+   ./api-tests/create-game.sh "Player 1"
+   ```
+   Note the `gameId` from the output.
+
+3. **Create User 2** (run script again):
+   ```bash
+   ./scripts/test-cognito-auth.sh
+   ```
+   Use email: `player2@example.com`
+   
+   The script automatically updates `.env` with User 2's token.
+
+4. **Join Game** with User 2's token:
+   ```bash
+   ./api-tests/join-game.sh <gameId> "Player 2"
+   ```
+
+## Token Expiration
+
+Cognito ID tokens expire after 24 hours. When you get a `401 Unauthorized`:
+
+1. Run the script again:
+   ```bash
+   ./scripts/test-cognito-auth.sh
+   ```
+
+2. The script automatically updates `.env` with the new token
+
+3. All scripts will use the new token immediately (they source .env on every run)
 
 ## Troubleshooting
 
-### 401 Unauthorized
-- Token expired → Get a new token
-- Invalid token → Check you're using ID Token, not Access Token
-- Missing header → Ensure `Authorization: Bearer <token>` header is present
+**Getting 401 Unauthorized?**
+- Token may have expired - run `./scripts/test-cognito-auth.sh` to get a new token
+- Check that `.env` file exists and contains `ID_TOKEN`
 
-### 403 Forbidden
-- Token not valid → Verify token with Cognito
-- User not confirmed → Confirm user in Cognito console or CLI
+**Getting 403 Forbidden?**
+- Token might be invalid - get a fresh token
+- Check that the route is properly configured
 
-### CORS Errors
-- Check `cors_allowed_origins` in Terraform
+**Scripts not finding .env file?**
+- Make sure you're running scripts from the project root
+- Run `./scripts/test-cognito-auth.sh` first to create the `.env` file
+
+**jq not found?**
+- Install jq: `brew install jq` (macOS) or `apt-get install jq` (Linux)
+- Scripts will still work without jq, but JSON won't be formatted
+
+**CORS errors?**
+- Check that your `cors_allowed_origins` in Terraform includes your origin
 - For local testing, ensure `http://localhost:*` is included
-

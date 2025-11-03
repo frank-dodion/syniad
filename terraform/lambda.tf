@@ -34,11 +34,15 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
           "dynamodb:UpdateItem",
           "dynamodb:DeleteItem",
           "dynamodb:Query",
-          "dynamodb:Scan"
+          "dynamodb:Scan",
+          "dynamodb:BatchGetItem"
         ]
         Resource = [
           aws_dynamodb_table.games.arn,
-          "${aws_dynamodb_table.games.arn}/*"
+          "${aws_dynamodb_table.games.arn}/*",
+          aws_dynamodb_table.player_games.arn,
+          "${aws_dynamodb_table.player_games.arn}/*",
+          "${aws_dynamodb_table.player_games.arn}/index/*"
         ]
       },
       {
@@ -95,6 +99,16 @@ data "archive_file" "get_game_lambda" {
   excludes = ["node_modules/.cache"]
 }
 
+data "archive_file" "get_all_games_lambda" {
+  type        = "zip"
+  source_dir  = "${path.module}/../.build/lambda-packages/getAllGames"
+  output_path = "${path.module}/lambda-zips/getAllGames.zip"
+  
+  depends_on = [null_resource.build_lambda]
+  
+  excludes = ["node_modules/.cache"]
+}
+
 data "archive_file" "authorizer_lambda" {
   type        = "zip"
   source_dir  = "${path.module}/../.build/lambda-packages/authorizer"
@@ -106,8 +120,13 @@ data "archive_file" "authorizer_lambda" {
 }
 
 # Build step - triggers when source files change
+# This builds ALL Lambda functions when any source code or configuration changes.
+# To force a rebuild of all lambdas, you can:
+#   1. Touch any source file: touch handlers/test.ts && terraform apply
+#   2. Or manually run: ./scripts/build-lambda.sh && terraform apply
 resource "null_resource" "build_lambda" {
   triggers = {
+    # Source files - triggers rebuild when any handler, lib, or shared code changes
     handlers_hash = sha256(join("", [
       for f in fileset("${path.module}/../handlers", "**/*.ts") : filesha256("${path.module}/../handlers/${f}")
     ]))
@@ -117,11 +136,18 @@ resource "null_resource" "build_lambda" {
     shared_hash = sha256(join("", [
       for f in fileset("${path.module}/../shared", "**/*.ts") : filesha256("${path.module}/../shared/${f}")
     ]))
+    # Configuration files that affect the build
     package_json = filesha256("${path.module}/../package.json")
+    package_lock_json = filesha256("${path.module}/../package-lock.json")
+    tsconfig_json = filesha256("${path.module}/../tsconfig.json")
+    # Build script itself - rebuilds if the build process changes
+    build_script = filesha256("${path.module}/../scripts/build-lambda.sh")
   }
 
   provisioner "local-exec" {
-    command = "cd ${path.module}/.. && bash scripts/build-lambda.sh"
+    command     = "cd ${path.module}/.. && bash scripts/build-lambda.sh"
+    on_failure  = continue
+    interpreter = ["bash", "-c"]
   }
 }
 
@@ -139,6 +165,7 @@ resource "aws_lambda_function" "test" {
   environment {
     variables = {
       GAMES_TABLE = aws_dynamodb_table.games.name
+      PLAYER_GAMES_TABLE = aws_dynamodb_table.player_games.name
     }
   }
 
@@ -159,6 +186,7 @@ resource "aws_lambda_function" "create_game" {
   environment {
     variables = {
       GAMES_TABLE = aws_dynamodb_table.games.name
+      PLAYER_GAMES_TABLE = aws_dynamodb_table.player_games.name
     }
   }
 
@@ -179,6 +207,7 @@ resource "aws_lambda_function" "join_game" {
   environment {
     variables = {
       GAMES_TABLE = aws_dynamodb_table.games.name
+      PLAYER_GAMES_TABLE = aws_dynamodb_table.player_games.name
     }
   }
 
@@ -199,6 +228,28 @@ resource "aws_lambda_function" "get_game" {
   environment {
     variables = {
       GAMES_TABLE = aws_dynamodb_table.games.name
+      PLAYER_GAMES_TABLE = aws_dynamodb_table.player_games.name
+    }
+  }
+
+  tags = local.common_tags
+}
+
+# GetAllGames Lambda function (also handles games by player via query param)
+resource "aws_lambda_function" "get_all_games" {
+  filename         = data.archive_file.get_all_games_lambda.output_path
+  function_name    = "${local.service_name}-get-all-games"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  runtime         = "nodejs20.x"
+  timeout         = var.lambda_timeout
+  memory_size     = var.lambda_memory_size
+  source_code_hash = data.archive_file.get_all_games_lambda.output_base64sha256
+
+  environment {
+    variables = {
+      GAMES_TABLE = aws_dynamodb_table.games.name
+      PLAYER_GAMES_TABLE = aws_dynamodb_table.player_games.name
     }
   }
 

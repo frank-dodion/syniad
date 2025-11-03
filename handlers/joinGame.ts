@@ -10,6 +10,26 @@ export const handler = async (
     // Extract user identity from authorizer context
     const user = extractUserIdentity(event);
     const userId = user.userId;
+    
+    // userId is required - it's the Cognito sub (unique, immutable identifier)
+    if (!userId) {
+      return {
+        statusCode: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ 
+          error: 'Authentication required - userId not found in token',
+          user: {
+            userId: user.userId,
+            username: user.username,
+            email: user.email
+          }
+        })
+      };
+    }
+
     const username = user.username || '';
     const email = user.email || '';
 
@@ -78,8 +98,8 @@ export const handler = async (
       };
     }
 
-    // Check if game is already full (2 players)
-    if (game.players.length >= 2) {
+    // Check if game is already full (player2 exists)
+    if (game.player2) {
       return {
         statusCode: 400,
         headers: {
@@ -87,7 +107,7 @@ export const handler = async (
           'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({ 
-          error: 'Game is full (maximum 2 players)',
+          error: 'Game is full (2 players already in game)',
           user: {
             userId: user.userId,
             username: user.username,
@@ -98,7 +118,7 @@ export const handler = async (
     }
 
     // Prevent user from joining their own game
-    if (userId && game.players.some(p => p.userId === userId)) {
+    if (game.player1.userId === userId) {
       return {
         statusCode: 400,
         headers: {
@@ -106,7 +126,7 @@ export const handler = async (
           'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({ 
-          error: 'You are already in this game',
+          error: 'You cannot join your own game',
           user: {
             userId: user.userId,
             username: user.username,
@@ -116,24 +136,14 @@ export const handler = async (
       };
     }
 
-    // Add the new player
-    const newPlayer: Player = {
+    // Set player2 (the joiner is always Player 2)
+    game.player2 = {
       name: playerName,
-      userId: userId,
-      playerIndex: 1
+      userId: userId // Required: Cognito sub - Joiner is always Player 2
     };
-    
-    game.players.push(newPlayer);
-    
-    // Update first player's index if not set
-    if (game.players[0].playerIndex === undefined) {
-      game.players[0].playerIndex = 0;
-    }
 
     // Change status to 'active' when second player joins
-    if (game.players.length === 2) {
-      game.status = 'active';
-    }
+    game.status = 'active';
 
     // Update timestamp
     game.updatedAt = new Date().toISOString();
