@@ -10,14 +10,26 @@ resource "aws_dynamodb_table" "games" {
   }
 
   attribute {
-    name = "creatorId"
+    name = "player1Id"
     type = "S"
   }
 
-  # GSI to query games by creator (efficient "games created by user" queries)
+  attribute {
+    name = "player2Id"
+    type = "S"
+  }
+
+  # GSI to query games by player1 (efficient "games created by player1" queries)
   global_secondary_index {
-    name            = "creatorId-index"
-    hash_key        = "creatorId"
+    name            = "player1Id-index"
+    hash_key        = "player1Id"
+    projection_type = "ALL" # Include all attributes in the index
+  }
+
+  # GSI to query games by player2 (efficient "games joined by player2" queries)
+  global_secondary_index {
+    name            = "player2Id-index"
+    hash_key        = "player2Id"
     projection_type = "ALL" # Include all attributes in the index
   }
 

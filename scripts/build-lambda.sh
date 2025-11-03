@@ -9,7 +9,7 @@ echo "Building TypeScript..."
 npm run build
 
 # Lambda names
-LAMBDAS=("test" "createGame" "joinGame" "getGame" "getAllGames" "authorizer")
+LAMBDAS=("test" "createGame" "joinGame" "getGame" "getAllGames" "authorizer" "docs")
 
 # Create Lambda package directories
 echo "Preparing Lambda packages..."
@@ -19,6 +19,7 @@ mkdir -p .build/lambda-packages/joinGame
 mkdir -p .build/lambda-packages/getGame
 mkdir -p .build/lambda-packages/getAllGames
 mkdir -p .build/lambda-packages/authorizer
+mkdir -p .build/lambda-packages/docs
 
 # Function to build a specific lambda
 build_lambda() {
@@ -34,6 +35,7 @@ build_lambda() {
     "getAllGames") handler_name="getAllGames" ;;
     "authorizer") handler_name="authorizer" ;;
     "test") handler_name="test" ;;
+    "docs") handler_name="docs" ;;
     *) handler_name="$lambda_name" ;;
   esac
   
@@ -46,6 +48,12 @@ build_lambda() {
   rm -rf ".build/lambda-packages/${lambda_name}/lib" ".build/lambda-packages/${lambda_name}/shared"
   cp -r .build/lib ".build/lambda-packages/${lambda_name}/lib" 2>/dev/null || true
   cp -r .build/shared ".build/lambda-packages/${lambda_name}/shared" 2>/dev/null || true
+  
+  # Copy OpenAPI spec for docs handler
+  if [ "$lambda_name" = "docs" ]; then
+    mkdir -p ".build/lambda-packages/${lambda_name}/docs"
+    cp docs/openapi.yaml ".build/lambda-packages/${lambda_name}/docs/openapi.yaml" 2>/dev/null || true
+  fi
   
   # Fix import paths in lib files too (they might import from shared)
   find ".build/lambda-packages/${lambda_name}" -name "*.js" -type f -exec sed -i '' 's|require("../shared/|require("./shared/|g' {} + 2>/dev/null || true

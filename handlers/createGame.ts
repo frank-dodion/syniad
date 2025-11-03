@@ -45,7 +45,7 @@ export const handler = async (
         userId: userId // Required: Cognito sub - Creator is always Player 1
       },
       // player2 will be set when someone joins
-      creatorId: userId, // Index: Creator's userId (always player1.userId) for efficient "games created by" queries
+      player1Id: userId, // Index: Player1's userId for efficient "games created by player1" queries
       turnNumber: 1,
       createdAt: new Date().toISOString()
     };

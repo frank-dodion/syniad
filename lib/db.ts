@@ -1,5 +1,6 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, QueryCommand, DeleteCommand, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
+import { Buffer } from 'buffer';
 import { Game } from '../shared/types';
 
 // In-memory storage for local testing
@@ -22,6 +23,12 @@ if (!useMock) {
   dynamodbClient = DynamoDBDocumentClient.from(client);
 }
 
+export interface PaginatedResult<T> {
+  items: T[];
+  nextToken?: string;
+  hasMore: boolean;
+}
+
 export async function saveGame(game: Game): Promise<void> {
   // Extract player userIds from player1 and player2
   const playerIds: string[] = [game.player1.userId];
@@ -29,13 +36,13 @@ export async function saveGame(game: Game): Promise<void> {
     playerIds.push(game.player2.userId);
   }
   
-  // Ensure creatorId is set (always player1.userId)
-  const creatorId = game.creatorId || game.player1.userId;
-  
-  // Update game with creatorId
+  // Ensure player1Id and player2Id are set (denormalized index fields for efficient queries)
+  // player1Id always equals player1.userId (game creator)
+  // player2Id equals player2.userId when player2 exists
   const gameWithIndex: Game = {
     ...game,
-    creatorId: creatorId
+    player1Id: game.player1Id || game.player1.userId,
+    player2Id: game.player2Id || (game.player2?.userId)
   };
   
   if (useMock) {
@@ -176,41 +183,91 @@ export async function getGame(gameId: string): Promise<Game | undefined> {
   return result.Item as Game | undefined;
 }
 
-export async function getAllGames(): Promise<Game[]> {
+export async function getAllGames(limit?: number, nextToken?: string): Promise<PaginatedResult<Game>> {
   if (useMock) {
     // Local mode: return all games from in-memory storage
-    return Array.from(mockStorage.values());
+    const allGames = Array.from(mockStorage.values());
+    const maxLimit = limit || 100;
+    const games = allGames.slice(0, maxLimit);
+    return {
+      items: games,
+      hasMore: allGames.length > maxLimit,
+      nextToken: allGames.length > maxLimit ? String(maxLimit) : undefined
+    };
   }
   
-  // Production: scan DynamoDB table (returns all games)
-  // Note: For large tables, consider pagination
+  // Production: scan DynamoDB table with pagination
+  const scanLimit = limit || 100; // Default to 100 items per page
+  const scanParams: any = {
+    TableName: GAMES_TABLE,
+    Limit: scanLimit
+  };
+  
+  // If nextToken provided, use it for pagination (LastEvaluatedKey)
+  if (nextToken) {
+    try {
+      scanParams.ExclusiveStartKey = JSON.parse(Buffer.from(nextToken, 'base64').toString());
+    } catch (e) {
+      // Invalid token, ignore and start from beginning
+    }
+  }
+  
   const result = await dynamodbClient!.send(
-    new ScanCommand({
-      TableName: GAMES_TABLE
-    })
+    new ScanCommand(scanParams)
   );
   
-  return (result.Items || []) as Game[];
+  const games = (result.Items || []) as Game[];
+  const hasMore = !!result.LastEvaluatedKey;
+  const nextTokenValue = hasMore 
+    ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
+    : undefined;
+  
+  return {
+    items: games,
+    hasMore,
+    nextToken: nextTokenValue
+  };
 }
 
-export async function getGamesByPlayer(userId: string): Promise<Game[]> {
+export async function getGamesByPlayer(userId: string, limit?: number, nextToken?: string): Promise<PaginatedResult<Game>> {
   if (useMock) {
     // Local mode: use player-games mapping
-    const gameIds = mockPlayerGames.get(userId) || new Set<string>();
-    return Array.from(gameIds)
+    const gameIds = Array.from(mockPlayerGames.get(userId) || new Set<string>());
+    const allGames = gameIds
       .map(gameId => mockStorage.get(gameId))
       .filter((game): game is Game => !!game);
+    
+    const maxLimit = limit || 100;
+    const games = allGames.slice(0, maxLimit);
+    return {
+      items: games,
+      hasMore: allGames.length > maxLimit,
+      nextToken: allGames.length > maxLimit ? String(maxLimit) : undefined
+    };
   }
   
-  // Production: Query player-games mapping table by playerId (no scan!)
+  // Production: Query player-games mapping table by playerId with pagination (no scan!)
+  const queryLimit = limit || 100;
+  const queryParams: any = {
+    TableName: PLAYER_GAMES_TABLE,
+    KeyConditionExpression: 'playerId = :playerId',
+    ExpressionAttributeValues: {
+      ':playerId': userId
+    },
+    Limit: queryLimit
+  };
+  
+  // If nextToken provided, use it for pagination
+  if (nextToken) {
+    try {
+      queryParams.ExclusiveStartKey = JSON.parse(Buffer.from(nextToken, 'base64').toString());
+    } catch (e) {
+      // Invalid token, ignore
+    }
+  }
+  
   const playerGamesQuery = await dynamodbClient!.send(
-    new QueryCommand({
-      TableName: PLAYER_GAMES_TABLE,
-      KeyConditionExpression: 'playerId = :playerId',
-      ExpressionAttributeValues: {
-        ':playerId': userId
-      }
-    })
+    new QueryCommand(queryParams)
   );
   
   const gameIds = (playerGamesQuery.Items || [])
@@ -218,54 +275,145 @@ export async function getGamesByPlayer(userId: string): Promise<Game[]> {
     .filter((id): id is string => !!id);
   
   if (gameIds.length === 0) {
-    return [];
+    return {
+      items: [],
+      hasMore: !!playerGamesQuery.LastEvaluatedKey,
+      nextToken: playerGamesQuery.LastEvaluatedKey 
+        ? Buffer.from(JSON.stringify(playerGamesQuery.LastEvaluatedKey)).toString('base64')
+        : undefined
+    };
   }
   
   // Batch get games using BatchGetItem (DynamoDB allows up to 100 items per batch)
-  // Split into batches of 100 if needed
-  const games: Game[] = [];
-  const batchSize = 100;
-  
-  for (let i = 0; i < gameIds.length; i += batchSize) {
-    const batch = gameIds.slice(i, i + batchSize);
-    const batchGetResult = await dynamodbClient!.send(
-      new BatchGetCommand({
-        RequestItems: {
-          [GAMES_TABLE]: {
-            Keys: batch.map(gameId => ({ gameId }))
-          }
+  const batchGetResult = await dynamodbClient!.send(
+    new BatchGetCommand({
+      RequestItems: {
+        [GAMES_TABLE]: {
+          Keys: gameIds.map(gameId => ({ gameId }))
         }
-      })
-    );
-    
-    const batchGames = (batchGetResult.Responses?.[GAMES_TABLE] || []) as Game[];
-    games.push(...batchGames);
-  }
-  
-  return games;
-}
-
-/**
- * Get games created by a specific user (using GSI on creatorId)
- * More efficient than scanning - uses Query on creatorId-index
- */
-export async function getGamesByCreator(creatorId: string): Promise<Game[]> {
-  if (useMock) {
-    // Local mode: filter games by creatorId
-    return Array.from(mockStorage.values()).filter(game => game.creatorId === creatorId);
-  }
-  
-  // Production: Query GSI by creatorId (no scan!)
-  const result = await dynamodbClient!.send(
-    new QueryCommand({
-      TableName: GAMES_TABLE,
-      IndexName: 'creatorId-index',
-      KeyConditionExpression: 'creatorId = :creatorId',
-      ExpressionAttributeValues: {
-        ':creatorId': creatorId
       }
     })
   );
   
-  return (result.Items || []) as Game[];
+  const games = (batchGetResult.Responses?.[GAMES_TABLE] || []) as Game[];
+  const hasMore = !!playerGamesQuery.LastEvaluatedKey;
+  const nextTokenValue = hasMore 
+    ? Buffer.from(JSON.stringify(playerGamesQuery.LastEvaluatedKey)).toString('base64')
+    : undefined;
+  
+  return {
+    items: games,
+    hasMore,
+    nextToken: nextTokenValue
+  };
+}
+
+/**
+ * Get games created by a specific user as player1 (using GSI on player1Id)
+ * More efficient than scanning - uses Query on player1Id-index
+ */
+export async function getGamesByPlayer1(player1Id: string, limit?: number, nextToken?: string): Promise<PaginatedResult<Game>> {
+  if (useMock) {
+    // Local mode: filter games by player1Id
+    const allGames = Array.from(mockStorage.values()).filter(game => game.player1Id === player1Id || game.player1.userId === player1Id);
+    const maxLimit = limit || 100;
+    const games = allGames.slice(0, maxLimit);
+    return {
+      items: games,
+      hasMore: allGames.length > maxLimit,
+      nextToken: allGames.length > maxLimit ? String(maxLimit) : undefined
+    };
+  }
+  
+  // Production: Query GSI by player1Id with pagination (no scan!)
+  const queryLimit = limit || 100;
+  const queryParams: any = {
+    TableName: GAMES_TABLE,
+    IndexName: 'player1Id-index',
+    KeyConditionExpression: 'player1Id = :player1Id',
+    ExpressionAttributeValues: {
+      ':player1Id': player1Id
+    },
+    Limit: queryLimit
+  };
+  
+  // If nextToken provided, use it for pagination
+  if (nextToken) {
+    try {
+      queryParams.ExclusiveStartKey = JSON.parse(Buffer.from(nextToken, 'base64').toString());
+    } catch (e) {
+      // Invalid token, ignore
+    }
+  }
+  
+  const result = await dynamodbClient!.send(
+    new QueryCommand(queryParams)
+  );
+  
+  const games = (result.Items || []) as Game[];
+  const hasMore = !!result.LastEvaluatedKey;
+  const nextTokenValue = hasMore 
+    ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
+    : undefined;
+  
+  return {
+    items: games,
+    hasMore,
+    nextToken: nextTokenValue
+  };
+}
+
+/**
+ * Get games where a specific user is player2 (using GSI on player2Id)
+ * More efficient than scanning - uses Query on player2Id-index
+ */
+export async function getGamesByPlayer2(player2Id: string, limit?: number, nextToken?: string): Promise<PaginatedResult<Game>> {
+  if (useMock) {
+    // Local mode: filter games by player2Id
+    const allGames = Array.from(mockStorage.values()).filter(game => game.player2Id === player2Id || game.player2?.userId === player2Id);
+    const maxLimit = limit || 100;
+    const games = allGames.slice(0, maxLimit);
+    return {
+      items: games,
+      hasMore: allGames.length > maxLimit,
+      nextToken: allGames.length > maxLimit ? String(maxLimit) : undefined
+    };
+  }
+  
+  // Production: Query GSI by player2Id with pagination (no scan!)
+  const queryLimit = limit || 100;
+  const queryParams: any = {
+    TableName: GAMES_TABLE,
+    IndexName: 'player2Id-index',
+    KeyConditionExpression: 'player2Id = :player2Id',
+    ExpressionAttributeValues: {
+      ':player2Id': player2Id
+    },
+    Limit: queryLimit
+  };
+  
+  // If nextToken provided, use it for pagination
+  if (nextToken) {
+    try {
+      queryParams.ExclusiveStartKey = JSON.parse(Buffer.from(nextToken, 'base64').toString());
+    } catch (e) {
+      // Invalid token, ignore
+    }
+  }
+  
+  const result = await dynamodbClient!.send(
+    new QueryCommand(queryParams)
+  );
+  
+  const games = (result.Items || []) as Game[];
+  const hasMore = !!result.LastEvaluatedKey;
+  const nextTokenValue = hasMore 
+    ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
+    : undefined;
+  
+  return {
+    items: games,
+    hasMore,
+    nextToken: nextTokenValue
+  };
 }

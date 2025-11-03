@@ -54,6 +54,14 @@ resource "aws_apigatewayv2_integration" "get_all_games" {
   integration_method = "POST"
 }
 
+# API Gateway Integration for Docs
+resource "aws_apigatewayv2_integration" "docs" {
+  api_id           = aws_apigatewayv2_api.api.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.docs.invoke_arn
+  integration_method = "POST"
+}
+
 
 # API Gateway Authorizer
 resource "aws_apigatewayv2_authorizer" "api_authorizer" {
@@ -106,13 +114,58 @@ resource "aws_apigatewayv2_route" "get_game" {
   authorization_type = "CUSTOM"
 }
 
-# API Gateway Route for GetAllGames (also handles query parameter for playerId)
+# API Gateway Route for GetAllGames (all games, with pagination query params)
 resource "aws_apigatewayv2_route" "get_all_games" {
   api_id    = aws_apigatewayv2_api.api.id
   route_key = "GET /games"
   target    = "integrations/${aws_apigatewayv2_integration.get_all_games.id}"
   authorizer_id = aws_apigatewayv2_authorizer.api_authorizer.id
   authorization_type = "CUSTOM"
+}
+
+# API Gateway Route for GetGamesByPlayer (games where player is player1 OR player2)
+resource "aws_apigatewayv2_route" "get_games_by_player" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /games/players/{playerId}"
+  target    = "integrations/${aws_apigatewayv2_integration.get_all_games.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.api_authorizer.id
+  authorization_type = "CUSTOM"
+}
+
+# API Gateway Route for GetGamesByPlayer1 (games where player is player1)
+resource "aws_apigatewayv2_route" "get_games_by_player1" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /games/player1/{player1Id}"
+  target    = "integrations/${aws_apigatewayv2_integration.get_all_games.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.api_authorizer.id
+  authorization_type = "CUSTOM"
+}
+
+# API Gateway Route for GetGamesByPlayer2 (games where player is player2)
+resource "aws_apigatewayv2_route" "get_games_by_player2" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /games/player2/{player2Id}"
+  target    = "integrations/${aws_apigatewayv2_integration.get_all_games.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.api_authorizer.id
+  authorization_type = "CUSTOM"
+}
+
+# API Gateway Route for Docs (Swagger UI)
+resource "aws_apigatewayv2_route" "docs" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /docs"
+  target    = "integrations/${aws_apigatewayv2_integration.docs.id}"
+  # Docs endpoint doesn't require authentication
+  authorization_type = "NONE"
+}
+
+# API Gateway Route for OpenAPI Spec
+resource "aws_apigatewayv2_route" "docs_openapi" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /docs/openapi.yaml"
+  target    = "integrations/${aws_apigatewayv2_integration.docs.id}"
+  # OpenAPI spec endpoint doesn't require authentication
+  authorization_type = "NONE"
 }
 
 # API Gateway Stage
@@ -134,6 +187,11 @@ resource "aws_apigatewayv2_stage" "default" {
     aws_apigatewayv2_route.join_game,
     aws_apigatewayv2_route.get_game,
     aws_apigatewayv2_route.get_all_games,
+    aws_apigatewayv2_route.get_games_by_player,
+    aws_apigatewayv2_route.get_games_by_player1,
+    aws_apigatewayv2_route.get_games_by_player2,
+    aws_apigatewayv2_route.docs,
+    aws_apigatewayv2_route.docs_openapi,
     aws_apigatewayv2_authorizer.api_authorizer
   ]
 
@@ -177,6 +235,14 @@ resource "aws_lambda_permission" "get_all_games_api_gw" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.get_all_games.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "docs_api_gw" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.docs.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
 }

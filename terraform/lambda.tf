@@ -119,6 +119,16 @@ data "archive_file" "authorizer_lambda" {
   excludes = ["node_modules/.cache"]
 }
 
+data "archive_file" "docs_lambda" {
+  type        = "zip"
+  source_dir  = "${path.module}/../.build/lambda-packages/docs"
+  output_path = "${path.module}/lambda-zips/docs.zip"
+  
+  depends_on = [null_resource.build_lambda]
+  
+  excludes = ["node_modules/.cache"]
+}
+
 # Build step - triggers when source files change
 # This builds ALL Lambda functions when any source code or configuration changes.
 # To force a rebuild of all lambdas, you can:
@@ -142,6 +152,8 @@ resource "null_resource" "build_lambda" {
     tsconfig_json = filesha256("${path.module}/../tsconfig.json")
     # Build script itself - rebuilds if the build process changes
     build_script = filesha256("${path.module}/../scripts/build-lambda.sh")
+    # OpenAPI spec - triggers rebuild when docs change (so /docs endpoint gets updated spec)
+    openapi_spec = filesha256("${path.module}/../docs/openapi.yaml")
   }
 
   provisioner "local-exec" {
@@ -252,6 +264,20 @@ resource "aws_lambda_function" "get_all_games" {
       PLAYER_GAMES_TABLE = aws_dynamodb_table.player_games.name
     }
   }
+
+  tags = local.common_tags
+}
+
+# Docs Lambda function
+resource "aws_lambda_function" "docs" {
+  filename         = data.archive_file.docs_lambda.output_path
+  function_name    = "${local.service_name}-docs"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  runtime         = "nodejs20.x"
+  timeout         = 30
+  memory_size     = 128
+  source_code_hash = data.archive_file.docs_lambda.output_base64sha256
 
   tags = local.common_tags
 }

@@ -1,0 +1,522 @@
+openapi: 3.0.3
+info:
+  title: Syniad API
+  description: API for managing game sessions
+  version: 1.0.0
+  contact:
+    name: Syniad API Support
+servers:
+  - url: https://api.syniad.com
+    description: Production server
+  - url: http://localhost:3000
+    description: Local development server
+tags:
+  - name: Games
+    description: Game management operations
+  - name: Test
+    description: Test endpoint
+  - name: Docs
+    description: API documentation
+paths:
+  /test:
+    get:
+      operationId: getTest
+      tags:
+        - Test
+      summary: Test endpoint
+      description: Returns a test message with user information
+      parameters: []
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+                  user:
+                    $ref: "#/components/schemas/User"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games:
+    post:
+      operationId: createGame
+      tags:
+        - Games
+      summary: Create a new game
+      description: Creates a new game with the authenticated user as player1
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                playerName:
+                  type: string
+                  description: Optional player name (defaults to username or email)
+              example:
+                playerName: My Player Name
+    get:
+      operationId: getAllGames
+      tags:
+        - Games
+      summary: Get all games
+      description: Retrieves all games with pagination support
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamesResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games/{gameId}/join:
+    post:
+      operationId: joinGame
+      tags:
+        - Games
+      summary: Join a game
+      description: Joins an existing game as player2
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: Unique identifier for the game
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JoinGameResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                playerName:
+                  type: string
+                  description: Optional player name (defaults to username or email)
+              example:
+                playerName: My Player Name
+  /games/{gameId}:
+    get:
+      operationId: getGame
+      tags:
+        - Games
+      summary: Get a specific game
+      description: Retrieves details for a specific game by ID
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: Unique identifier for the game
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games/players/{playerId}:
+    get:
+      operationId: getGamesByPlayer
+      tags:
+        - Games
+      summary: Get games for a player
+      description: Retrieves all games where the specified player is either player1 or player2
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          description: User ID (Cognito sub) of the player
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games/player1/{player1Id}:
+    get:
+      operationId: getGamesByPlayer1
+      tags:
+        - Games
+      summary: Get games created by player
+      description: Retrieves all games where the specified player is player1 (games they created)
+      parameters:
+        - name: player1Id
+          in: path
+          required: true
+          description: User ID (Cognito sub) of player1
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games/player2/{player2Id}:
+    get:
+      operationId: getGamesByPlayer2
+      tags:
+        - Games
+      summary: Get games joined by player
+      description: Retrieves all games where the specified player is player2 (games they joined)
+      parameters:
+        - name: player2Id
+          in: path
+          required: true
+          description: User ID (Cognito sub) of player2
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /docs:
+    get:
+      operationId: getdocs
+      tags:
+        - Docs
+      summary: API documentation
+      description: Interactive API documentation (Swagger UI)
+      parameters: []
+      responses:
+        "200":
+          description: Successful response
+          content:
+            text/html:
+              schema:
+                type: string
+  /docs/openapi.yaml:
+    get:
+      operationId: getOpenAPISpec
+      tags:
+        - Docs
+      summary: OpenAPI specification
+      description: OpenAPI 3.0 specification in YAML format
+      parameters: []
+      responses:
+        "200":
+          description: Successful response
+          content:
+            text/yaml:
+              schema:
+                type: string
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from AWS Cognito
+  schemas:
+    Player:
+      type: object
+      required:
+        - name
+        - userId
+      properties:
+        name:
+          type: string
+          description: Player's display name
+        userId:
+          type: string
+          description: Cognito user ID (sub) - unique, immutable identifier
+    Game:
+      type: object
+      required:
+        - gameId
+        - status
+        - player1
+        - player1Id
+        - turnNumber
+        - createdAt
+      properties:
+        gameId:
+          type: string
+          format: uuid
+          description: Unique game identifier
+        status:
+          type: string
+          enum:
+            - waiting
+            - active
+            - finished
+          description: Current game status
+        player1:
+          $ref: "#/components/schemas/Player"
+        player2:
+          $ref: "#/components/schemas/Player"
+        player1Id:
+          type: string
+          description: Index field - equals player1.userId
+        player2Id:
+          type: string
+          description: Index field - equals player2.userId when player2 exists
+        turnNumber:
+          type: integer
+          description: Current turn number
+        createdAt:
+          type: string
+          format: date-time
+          description: Game creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Game last update timestamp
+    User:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: Cognito user ID
+        username:
+          type: string
+          description: Username
+        email:
+          type: string
+          format: email
+          description: User email
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        user:
+          $ref: "#/components/schemas/User"
+        details:
+          type: string
+          description: Additional error details
+    GameResponse:
+      type: object
+      properties:
+        gameId:
+          type: string
+          format: uuid
+        game:
+          $ref: "#/components/schemas/Game"
+        user:
+          $ref: "#/components/schemas/User"
+    JoinGameResponse:
+      allOf:
+        - $ref: "#/components/schemas/GameResponse"
+        - type: object
+          properties:
+            message:
+              type: string
+              example: Game is now active!
+    GamesResponse:
+      type: object
+      properties:
+        games:
+          type: array
+          items:
+            $ref: "#/components/schemas/Game"
+        count:
+          type: integer
+          description: Number of games in this response
+        hasMore:
+          type: boolean
+          description: Whether there are more games available
+        nextToken:
+          type: string
+          description: Token to fetch the next page of results
+        playerId:
+          type: string
+          description: Filter parameter used (when querying by player)
+        player1Id:
+          type: string
+          description: Filter parameter used (when querying by player1)
+        player2Id:
+          type: string
+          description: Filter parameter used (when querying by player2)
+        user:
+          $ref: "#/components/schemas/User"
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

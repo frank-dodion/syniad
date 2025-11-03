@@ -1,9 +1,11 @@
 export interface Game {
   gameId: string;
   status: 'waiting' | 'active' | 'finished';
-  player1: Player; // Required: Creator (Player 1)
-  player2?: Player; // Optional: Second player (Player 2) - not set until someone joins
-  creatorId: string; // Index: Creator's userId (always player1.userId) for efficient "games created by" queries
+  player1: Player; // Required: Creator (Player 1) - always the game creator
+  player2?: Player; // Optional: Second player (Player 2) - set when someone joins
+  // Denormalized index fields for efficient database queries:
+  player1Id: string; // Index field: equals player1.userId for efficient "games created by player1" queries
+  player2Id?: string; // Index field: equals player2.userId when player2 exists
   turnNumber: number;
   createdAt: string;
   updatedAt?: string;

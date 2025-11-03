@@ -142,6 +142,9 @@ export const handler = async (
       userId: userId // Required: Cognito sub - Joiner is always Player 2
     };
 
+    // Set player2Id index field for efficient queries
+    game.player2Id = userId;
+
     // Change status to 'active' when second player joins
     game.status = 'active';
 

@@ -239,7 +239,7 @@ describe('API Integration Tests', () => {
       expect(data.game.player1).toHaveProperty('name');
     });
 
-    test('GET /games - should return all games', async () => {
+    test('GET /games - should return all games (paginated)', async () => {
       console.log(`\n[TEST] Making GET request to ${env.API_URL}/games`);
       const response = await fetch(`${env.API_URL}/games`, {
         method: 'GET',
@@ -255,12 +255,21 @@ describe('API Integration Tests', () => {
       console.log(`[TEST] Response data:`, JSON.stringify(data, null, 2));
       expect(data).toHaveProperty('games');
       expect(data).toHaveProperty('count');
+      expect(data).toHaveProperty('hasMore');
       expect(Array.isArray(data.games)).toBe(true);
       expect(typeof data.count).toBe('number');
+      expect(typeof data.hasMore).toBe('boolean');
       expect(data.count).toBeGreaterThanOrEqual(0);
+      // If hasMore is true, nextToken should be present
+      if (data.hasMore) {
+        expect(data).toHaveProperty('nextToken');
+        expect(typeof data.nextToken).toBe('string');
+      }
+      // Default limit should be 100
+      expect(data.count).toBeLessThanOrEqual(100);
     });
 
-    test('GET /games?playerId={userId} - should return games for specific player', async () => {
+    test('GET /games/players/{userId} - should return games for specific player', async () => {
       // First, ensure we have at least one game created by the current user
       if (!gameId) {
         const createResponse = await fetch(`${env.API_URL}/games`, {
@@ -280,9 +289,9 @@ describe('API Integration Tests', () => {
       const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
       const userId = payload.sub || '';
       
-      console.log(`\n[TEST] Making GET request to ${env.API_URL}/games?playerId=${userId}`);
+      console.log(`\n[TEST] Making GET request to ${env.API_URL}/games/players/${userId}`);
       
-      const response = await fetch(`${env.API_URL}/games?playerId=${userId}`, {
+      const response = await fetch(`${env.API_URL}/games/players/${userId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${env.ID_TOKEN}`,
@@ -296,9 +305,11 @@ describe('API Integration Tests', () => {
       console.log(`[TEST] Response data:`, JSON.stringify(data, null, 2));
       expect(data).toHaveProperty('games');
       expect(data).toHaveProperty('count');
+      expect(data).toHaveProperty('hasMore');
       expect(data).toHaveProperty('playerId', userId);
       expect(Array.isArray(data.games)).toBe(true);
       expect(typeof data.count).toBe('number');
+      expect(typeof data.hasMore).toBe('boolean');
       // Should have at least one game since we just created one
       expect(data.count).toBeGreaterThanOrEqual(1);
       // Verify all returned games contain the user as a player
@@ -309,6 +320,94 @@ describe('API Integration Tests', () => {
         const isPlayer2 = game.player2?.userId === userId;
         expect(isPlayer1 || isPlayer2).toBe(true);
       });
+    });
+
+    test('GET /games/player1/{userId} - should return games where user is player1', async () => {
+      // Extract userId from JWT token
+      const tokenParts = env.ID_TOKEN.split('.');
+      const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
+      const userId = payload.sub || '';
+      
+      console.log(`\n[TEST] Making GET request to ${env.API_URL}/games/player1/${userId}`);
+      
+      const response = await fetch(`${env.API_URL}/games/player1/${userId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${env.ID_TOKEN}`,
+        },
+      });
+
+      console.log(`[TEST] Response status: ${response.status}`);
+      expect(response.status).toBe(200);
+      
+      const data = await response.json() as any;
+      console.log(`[TEST] Response data:`, JSON.stringify(data, null, 2));
+      expect(data).toHaveProperty('games');
+      expect(data).toHaveProperty('count');
+      expect(data).toHaveProperty('hasMore');
+      expect(data).toHaveProperty('player1Id', userId);
+      expect(Array.isArray(data.games)).toBe(true);
+      // Verify all returned games have this user as player1
+      data.games.forEach((game: any) => {
+        expect(game).toHaveProperty('player1');
+        expect(game.player1.userId).toBe(userId);
+      });
+    });
+
+    test('GET /games?limit=5 - should return paginated results with limit', async () => {
+      console.log(`\n[TEST] Making GET request to ${env.API_URL}/games?limit=5`);
+      const response = await fetch(`${env.API_URL}/games?limit=5`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${env.ID_TOKEN}`,
+        },
+      });
+
+      console.log(`[TEST] Response status: ${response.status}`);
+      expect(response.status).toBe(200);
+      
+      const data = await response.json() as any;
+      console.log(`[TEST] Response data:`, JSON.stringify(data, null, 2));
+      expect(data).toHaveProperty('games');
+      expect(data).toHaveProperty('count');
+      expect(data).toHaveProperty('hasMore');
+      expect(Array.isArray(data.games)).toBe(true);
+      expect(data.count).toBeLessThanOrEqual(5);
+      expect(typeof data.hasMore).toBe('boolean');
+    });
+
+    test('GET /games?limit=0 - should return error for invalid limit', async () => {
+      console.log(`\n[TEST] Making GET request to ${env.API_URL}/games?limit=0`);
+      const response = await fetch(`${env.API_URL}/games?limit=0`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${env.ID_TOKEN}`,
+        },
+      });
+
+      console.log(`[TEST] Response status: ${response.status}`);
+      expect(response.status).toBe(400);
+      
+      const data = await response.json() as any;
+      expect(data).toHaveProperty('error');
+      expect(data.error).toContain('limit');
+    });
+
+    test('GET /games?limit=101 - should return error for limit exceeding max', async () => {
+      console.log(`\n[TEST] Making GET request to ${env.API_URL}/games?limit=101`);
+      const response = await fetch(`${env.API_URL}/games?limit=101`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${env.ID_TOKEN}`,
+        },
+      });
+
+      console.log(`[TEST] Response status: ${response.status}`);
+      expect(response.status).toBe(400);
+      
+      const data = await response.json() as any;
+      expect(data).toHaveProperty('error');
+      expect(data.error).toContain('limit');
     });
   });
 });
