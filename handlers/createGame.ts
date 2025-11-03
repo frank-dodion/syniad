@@ -31,10 +31,8 @@ export const handler = async (
       };
     }
 
-    const username = user.username || '';
-    const email = user.email || '';
-    const body = event.body ? JSON.parse(event.body) : {};
-    const playerName: string = body.playerName || username || email || 'Player1';
+    // Use authenticated user for player1 - no payload needed
+    const playerName = user.username || user.email || `User-${userId.substring(0, 8)}`;
     
     const gameId = uuidv4();
     const game: Game = {

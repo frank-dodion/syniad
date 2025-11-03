@@ -99,6 +99,16 @@ data "archive_file" "get_game_lambda" {
   excludes = ["node_modules/.cache"]
 }
 
+data "archive_file" "delete_game_lambda" {
+  type        = "zip"
+  source_dir  = "${path.module}/../.build/lambda-packages/deleteGame"
+  output_path = "${path.module}/lambda-zips/deleteGame.zip"
+  
+  depends_on = [null_resource.build_lambda]
+  
+  excludes = ["node_modules/.cache"]
+}
+
 data "archive_file" "get_all_games_lambda" {
   type        = "zip"
   source_dir  = "${path.module}/../.build/lambda-packages/getAllGames"
@@ -236,6 +246,27 @@ resource "aws_lambda_function" "get_game" {
   timeout         = var.lambda_timeout
   memory_size     = var.lambda_memory_size
   source_code_hash = data.archive_file.get_game_lambda.output_base64sha256
+
+  environment {
+    variables = {
+      GAMES_TABLE = aws_dynamodb_table.games.name
+      PLAYER_GAMES_TABLE = aws_dynamodb_table.player_games.name
+    }
+  }
+
+  tags = local.common_tags
+}
+
+# DeleteGame Lambda function
+resource "aws_lambda_function" "delete_game" {
+  filename         = data.archive_file.delete_game_lambda.output_path
+  function_name    = "${local.service_name}-delete-game"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  runtime         = "nodejs20.x"
+  timeout         = var.lambda_timeout
+  memory_size     = var.lambda_memory_size
+  source_code_hash = data.archive_file.delete_game_lambda.output_base64sha256
 
   environment {
     variables = {

@@ -430,6 +430,63 @@ export async function getGamesByPlayer1(player1Id: string, limit?: number, nextT
  * Get games where a specific user is player2 (using GSI on player2Id)
  * More efficient than scanning - uses Query on player2Id-index
  */
+/**
+ * Delete a game and all player-game relationships
+ * This removes the game from the games table and all entries in player_games table
+ */
+export async function deleteGame(gameId: string): Promise<void> {
+  if (useMock) {
+    // Local mode: use in-memory storage
+    mockStorage.delete(gameId);
+    
+    // Remove from all player-game mappings
+    for (const [playerId, gameIds] of mockPlayerGames.entries()) {
+      gameIds.delete(gameId);
+      if (gameIds.size === 0) {
+        mockPlayerGames.delete(playerId);
+      }
+    }
+    
+    return Promise.resolve();
+  }
+  
+  // Production: use real DynamoDB with AWS SDK v3
+  // First, get all player-game relationships for this game
+  const playerGamesQuery = await dynamodbClient!.send(
+    new QueryCommand({
+      TableName: PLAYER_GAMES_TABLE,
+      IndexName: 'gameId-index',
+      KeyConditionExpression: 'gameId = :gameId',
+      ExpressionAttributeValues: {
+        ':gameId': gameId
+      }
+    })
+  );
+  
+  // Delete all player-game relationships
+  if (playerGamesQuery.Items && playerGamesQuery.Items.length > 0) {
+    for (const item of playerGamesQuery.Items) {
+      await dynamodbClient!.send(
+        new DeleteCommand({
+          TableName: PLAYER_GAMES_TABLE,
+          Key: {
+            playerId: item.playerId as string,
+            gameId: gameId
+          }
+        })
+      );
+    }
+  }
+  
+  // Delete the game itself
+  await dynamodbClient!.send(
+    new DeleteCommand({
+      TableName: GAMES_TABLE,
+      Key: { gameId }
+    })
+  );
+}
+
 export async function getGamesByPlayer2(player2Id: string, limit?: number, nextToken?: string): Promise<PaginatedResult<Game>> {
   if (useMock) {
     // Local mode: filter games by player2Id

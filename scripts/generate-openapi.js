@@ -78,18 +78,8 @@ function generateOpenAPISpec() {
   const routes = extractRoutesFromTerraform();
   const types = extractTypes();
   
-  // Get API info from existing spec or use defaults
-  let existingSpec = {};
-  const specPath = pathModule.join(__dirname, '..', 'docs', 'openapi.yaml');
-  if (fs.existsSync(specPath)) {
-    try {
-      existingSpec = yaml.parse(fs.readFileSync(specPath, 'utf8'));
-    } catch (e) {
-      // Use defaults if can't parse
-    }
-  }
-  
-  const info = existingSpec.info || {
+  // Generate spec entirely from source code - no manual edits preserved
+  const info = {
     title: 'Syniad API',
     description: 'API for managing game sessions',
     version: '1.0.0'
@@ -219,142 +209,36 @@ function generateOpenAPISpec() {
       // Don't add security array at all for public routes
     }
     
-    // Add request body for POST/PUT
+    // Add request body for POST/PUT only if one is generated
+    // If no request body is generated, ensure it's not present (override preserved content)
     if (['post', 'put', 'patch'].includes(methodLower)) {
-      operation.requestBody = generateRequestBody(openApiPath);
+      const generatedRequestBody = generateRequestBody(openApiPath);
+      if (generatedRequestBody) {
+        operation.requestBody = generatedRequestBody;
+      } else {
+        // Explicitly remove requestBody if it shouldn't exist (e.g., create game uses auth user)
+        delete operation.requestBody;
+      }
     }
     
     spec.paths[openApiPath][methodLower] = operation;
   });
   
-  // Preserve custom content from existing spec if present (descriptions, examples, etc.)
-  if (existingSpec.paths) {
-    Object.keys(existingSpec.paths).forEach(pathKey => {
-      if (spec.paths[pathKey]) {
-        Object.keys(existingSpec.paths[pathKey]).forEach(method => {
-          if (spec.paths[pathKey][method] && existingSpec.paths[pathKey][method]) {
-            const existing = existingSpec.paths[pathKey][method];
-            const generated = spec.paths[pathKey][method];
-            
-            // Preserve descriptions, summaries, examples, and other custom fields
-            if (existing.description) generated.description = existing.description;
-            if (existing.summary) generated.summary = existing.summary;
-            
-            // Merge request body if exists
-            if (existing.requestBody) {
-              generated.requestBody = existing.requestBody;
-            }
-            
-            // Preserve custom response examples and descriptions
-            if (existing.responses) {
-              Object.keys(existing.responses).forEach(statusCode => {
-                if (generated.responses[statusCode] && existing.responses[statusCode]) {
-                  const existingResponse = existing.responses[statusCode];
-                  const generatedResponse = generated.responses[statusCode];
-                  
-                  if (existingResponse.description) {
-                    generatedResponse.description = existingResponse.description;
-                  }
-                  
-                  // Preserve examples and content schemas
-                  if (existingResponse.content) {
-                    if (!generatedResponse.content) {
-                      generatedResponse.content = existingResponse.content;
-                    } else {
-                      Object.keys(existingResponse.content).forEach(contentType => {
-                        if (generatedResponse.content[contentType]) {
-                          if (existingResponse.content[contentType].examples) {
-                            generatedResponse.content[contentType].examples = existingResponse.content[contentType].examples;
-                          }
-                          if (existingResponse.content[contentType].example) {
-                            generatedResponse.content[contentType].example = existingResponse.content[contentType].example;
-                          }
-                        }
-                      });
-                    }
-                  }
-                }
-              });
-            }
-          }
-        });
-      }
-    });
-  }
-  
-  // Preserve custom components from existing spec
-  if (existingSpec.components) {
-    // Preserve custom schemas
-    if (existingSpec.components.schemas) {
-      Object.keys(existingSpec.components.schemas).forEach(schemaName => {
-        if (!spec.components.schemas[schemaName] || 
-            JSON.stringify(spec.components.schemas[schemaName]).includes('$ref')) {
-          // Use existing schema if generated one is just a reference
-          spec.components.schemas[schemaName] = existingSpec.components.schemas[schemaName];
-        }
-      });
-    }
-    
-    // Preserve custom response definitions
-    if (existingSpec.components.responses) {
-      Object.keys(existingSpec.components.responses).forEach(responseName => {
-        spec.components.responses[responseName] = existingSpec.components.responses[responseName];
-      });
-    }
-  }
-  
   return spec;
 }
 
 function generateOperationId(method, routePath) {
-  // Use existing operation IDs from current spec if available, otherwise generate
-  const pathModule = require('path');
-  const existingSpecPath = pathModule.join(__dirname, '..', 'docs', 'openapi.yaml');
-  let existingOperationIds = {};
-  
-  if (fs.existsSync(existingSpecPath)) {
-    try {
-      const existing = yaml.parse(fs.readFileSync(existingSpecPath, 'utf8'));
-      if (existing.paths) {
-        Object.keys(existing.paths).forEach(pathKey => {
-          Object.keys(existing.paths[pathKey]).forEach(methodKey => {
-            if (existing.paths[pathKey][methodKey]?.operationId) {
-              // Store both exact and normalized keys for matching
-              const exactKey = `${methodKey.toUpperCase()} ${pathKey}`;
-              const normalizedKey = `${methodKey.toUpperCase()} ${pathKey}`.toLowerCase();
-              const opId = existing.paths[pathKey][methodKey].operationId;
-              existingOperationIds[exactKey] = opId;
-              existingOperationIds[normalizedKey] = opId;
-            }
-          });
-        });
-      }
-    } catch (e) {
-      // Ignore errors - will generate new operation IDs
-    }
-  }
-  
-  // Try exact match first
-  const key = `${method.toUpperCase()} ${routePath}`;
-  if (existingOperationIds[key]) {
-    return existingOperationIds[key];
-  }
-  
-  // Try case-insensitive match
-  const keyLower = key.toLowerCase();
-  for (const [existingKey, existingId] of Object.entries(existingOperationIds)) {
-    if (existingKey.toLowerCase() === keyLower) {
-      return existingId;
-    }
-  }
-  
-  // Generate new operation ID based on route pattern
+  // Generate operation ID entirely from route pattern - no reading from old spec
   const parts = routePath.split('/').filter(p => p && !p.startsWith('{'));
   
-  // Special handling for common patterns
+  // Special handling for common patterns (use camelCase for consistency)
+  if (routePath === '/games/my/player1') return 'getMyGamesAsPlayer1';
+  if (routePath === '/games/my/player2') return 'getMyGamesAsPlayer2';
+  if (routePath === '/games/my') return 'getMyGames';
   if (routePath === '/games' && method === 'get') return 'getAllGames';
   if (routePath === '/games' && method === 'post') return 'createGame';
   if (routePath.startsWith('/games/{gameId}') && method === 'get') return 'getGame';
+  if (routePath.startsWith('/games/{gameId}') && method === 'delete') return 'deleteGame';
   if (routePath.endsWith('/join')) return 'joinGame';
   if (routePath.includes('/players/{playerId}')) return 'getGamesByPlayer';
   if (routePath.includes('/player1/')) return 'getGamesByPlayer1';
@@ -382,9 +266,13 @@ function generateSummary(method, path) {
                  method === 'delete' ? 'Delete' : 'Process';
   
   if (path === '/test') return 'Test endpoint';
+  if (path === '/games/my/player1') return 'Get my games as player1';
+  if (path === '/games/my/player2') return 'Get my games as player2';
+  if (path === '/games/my') return 'Get my games';
   if (path === '/games') return method === 'get' ? 'Get all games' : 'Create a new game';
   if (path.startsWith('/games/{gameId}')) {
     if (path.endsWith('/join')) return 'Join a game';
+    if (method === 'delete') return 'Delete a game';
     return method === 'get' ? 'Get a specific game' : 'Update game';
   }
   if (path.startsWith('/games/players/')) return 'Get games for a player';
@@ -398,9 +286,13 @@ function generateSummary(method, path) {
 
 function generateDescription(method, path) {
   if (path === '/test') return 'Returns a test message with user information';
+  if (path === '/games/my/player1') return 'Retrieves all games where the authenticated user is player1 (games they created)';
+  if (path === '/games/my/player2') return 'Retrieves all games where the authenticated user is player2 (games they joined)';
+  if (path === '/games/my') return 'Retrieves all games for the authenticated user (games where they are player1 or player2)';
   if (path === '/games' && method === 'get') return 'Retrieves all games with pagination support';
   if (path === '/games' && method === 'post') return 'Creates a new game with the authenticated user as player1';
   if (path === '/games/{gameId}' && method === 'get') return 'Retrieves details for a specific game by ID';
+  if (path === '/games/{gameId}' && method === 'delete') return 'Deletes a game. Only Player 1 (the creator) can delete the game';
   if (path === '/games/{gameId}/join') return 'Joins an existing game as player2';
   if (path === '/games/players/{playerId}') return 'Retrieves all games where the specified player is either player1 or player2';
   if (path === '/games/player1/{player1Id}') return 'Retrieves all games where the specified player is player1 (games they created)';
@@ -427,8 +319,8 @@ function extractParameters(path) {
     });
   }
   
-  // Add query parameters for certain endpoints
-  if (path === '/games' || path.startsWith('/games/players/') || path.startsWith('/games/player1/') || path.startsWith('/games/player2/')) {
+  // Add query parameters for certain endpoints (pagination)
+  if (path === '/games' || path === '/games/my' || path === '/games/my/player1' || path === '/games/my/player2' || path.startsWith('/games/players/') || path.startsWith('/games/player1/') || path.startsWith('/games/player2/')) {
     params.push({
       name: 'limit',
       in: 'query',
@@ -471,27 +363,7 @@ function getParameterSchema(name) {
 }
 
 function generateRequestBody(path) {
-  if (path === '/games' || path.endsWith('/join')) {
-    return {
-      required: false,
-      content: {
-        'application/json': {
-          schema: {
-            type: 'object',
-            properties: {
-              playerName: {
-                type: 'string',
-                description: 'Optional player name (defaults to username or email)'
-              }
-            },
-            example: {
-              playerName: 'My Player Name'
-            }
-          }
-        }
-      }
-    };
-  }
+  // No endpoints require request body - both create and join use authenticated user automatically
   return undefined;
 }
 
@@ -511,9 +383,26 @@ function generateResponses(method, path) {
   if (path.includes('{')) {
     responses['400'] = { $ref: '#/components/responses/BadRequest' };
     responses['404'] = { $ref: '#/components/responses/NotFound' };
+    if (method === 'delete') {
+      responses['403'] = { 
+        description: 'Forbidden - Only Player 1 (the creator) can delete the game',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                error: { type: 'string' },
+                gameId: { type: 'string' },
+                user: { $ref: '#/components/schemas/User' }
+              }
+            }
+          }
+        }
+      };
+    }
   }
   
-  if (method === 'post' || method === 'put') {
+  if (method === 'post' || method === 'put' || method === 'delete') {
     responses['400'] = { $ref: '#/components/responses/BadRequest' };
     responses['401'] = { $ref: '#/components/responses/Unauthorized' };
   }
@@ -553,7 +442,7 @@ function getResponseSchema(method, path) {
     };
   }
   
-  if (path === '/games' && method === 'get') {
+  if (path === '/games/my' || path === '/games/my/player1' || path === '/games/my/player2' || (path === '/games' && method === 'get')) {
     return {
       $ref: '#/components/schemas/GamesResponse'
     };

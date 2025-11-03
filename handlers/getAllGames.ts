@@ -8,9 +8,17 @@ export const handler = async (
   try {
     // Extract user identity from authorizer context
     const user = extractUserIdentity(event);
+    const userId = user.userId;
+
+    // Check if this is a "get my games" endpoint (GET /games/my, /games/my/player1, /games/my/player2)
+    // Get path from various possible locations (HTTP API vs REST API)
+    const path = event.path || (event.requestContext as any)?.http?.path || (event.requestContext as any)?.path || (event as any)?.rawPath || '';
+    const isMyGames = path === '/games/my' || path.endsWith('/games/my');
+    const isMyGamesPlayer1 = path === '/games/my/player1' || path.endsWith('/games/my/player1');
+    const isMyGamesPlayer2 = path === '/games/my/player2' || path.endsWith('/games/my/player2');
 
     // Check path parameters first (RESTful approach)
-    // Path-based routes: /games/players/{playerId}, /games/player1/{player1Id}, /games/player2/{player2Id}
+    // Path-based routes: /games/my, /games/players/{playerId}, /games/player1/{player1Id}, /games/player2/{player2Id}
     const pathPlayerId = event.pathParameters?.playerId;
     const pathPlayer1Id = event.pathParameters?.player1Id;
     const pathPlayer2Id = event.pathParameters?.player2Id;
@@ -41,7 +49,53 @@ export const handler = async (
     
     let result;
     // Prioritize path parameters over query parameters (more RESTful)
-    if (pathPlayer1Id) {
+    if (!userId && (isMyGames || isMyGamesPlayer1 || isMyGamesPlayer2)) {
+      // All "my games" endpoints require authentication
+      return {
+        statusCode: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ 
+          error: 'Authentication required - userId not found in token',
+          user: {
+            userId: user.userId,
+            username: user.username,
+            email: user.email
+          }
+        })
+      };
+    }
+    
+    if (isMyGamesPlayer1) {
+      // GET /games/my/player1 - Get games where authenticated user is player1 (games they created)
+      const paginated = await getGamesByPlayer1(userId!, limit, nextToken);
+      result = {
+        games: paginated.items,
+        count: paginated.items.length,
+        hasMore: paginated.hasMore,
+        ...(paginated.nextToken && { nextToken: paginated.nextToken })
+      };
+    } else if (isMyGamesPlayer2) {
+      // GET /games/my/player2 - Get games where authenticated user is player2 (games they joined)
+      const paginated = await getGamesByPlayer2(userId!, limit, nextToken);
+      result = {
+        games: paginated.items,
+        count: paginated.items.length,
+        hasMore: paginated.hasMore,
+        ...(paginated.nextToken && { nextToken: paginated.nextToken })
+      };
+    } else if (isMyGames) {
+      // GET /games/my - Get games for authenticated user (all games they're in - player1 OR player2)
+      const paginated = await getGamesByPlayer(userId!, limit, nextToken);
+      result = {
+        games: paginated.items,
+        count: paginated.items.length,
+        hasMore: paginated.hasMore,
+        ...(paginated.nextToken && { nextToken: paginated.nextToken })
+      };
+    } else if (pathPlayer1Id) {
       // GET /games/player1/{player1Id} - Get games where user is player1 (games they created)
       // Uses GSI on player1Id for efficiency
       const paginated = await getGamesByPlayer1(pathPlayer1Id, limit, nextToken);

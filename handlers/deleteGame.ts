@@ -1,7 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { getGame, saveGame } from '../lib/db';
+import { getGame, deleteGame } from '../lib/db';
 import { extractUserIdentity } from '../lib/auth';
-import { Game, Player } from '../shared/types';
 
 export const handler = async (
   event: APIGatewayProxyEvent
@@ -51,10 +50,7 @@ export const handler = async (
       };
     }
 
-    // Use authenticated user for player2 - no request body needed
-    const playerName = user.username || user.email || `User-${userId.substring(0, 8)}`;
-    
-    // Get the game
+    // Get the game to check ownership
     const game = await getGame(gameId);
     
     if (!game) {
@@ -75,16 +71,17 @@ export const handler = async (
       };
     }
 
-    // Validate game status
-    if (game.status !== 'waiting') {
+    // Only Player 1 (the creator) can delete the game
+    if (game.player1.userId !== userId) {
       return {
-        statusCode: 400,
+        statusCode: 403,
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({ 
-          error: `Cannot join game. Game status is: ${game.status}`,
+          error: 'Forbidden: Only the game creator (Player 1) can delete the game',
+          gameId,
           user: {
             userId: user.userId,
             username: user.username,
@@ -94,61 +91,8 @@ export const handler = async (
       };
     }
 
-    // Check if game is already full (player2 exists)
-    if (game.player2) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({ 
-          error: 'Game is full (2 players already in game)',
-          user: {
-            userId: user.userId,
-            username: user.username,
-            email: user.email
-          }
-        })
-      };
-    }
-
-    // Prevent user from joining their own game
-    if (game.player1.userId === userId) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({ 
-          error: 'You cannot join your own game',
-          user: {
-            userId: user.userId,
-            username: user.username,
-            email: user.email
-          }
-        })
-      };
-    }
-
-    // Set player2 (the joiner is always Player 2)
-    game.player2 = {
-      name: playerName,
-      userId: userId // Required: Cognito sub - Joiner is always Player 2
-    };
-
-    // Set player2Id index field for efficient queries
-    game.player2Id = userId;
-
-    // Change status to 'active' when second player joins
-    game.status = 'active';
-
-    // Update timestamp
-    game.updatedAt = new Date().toISOString();
-
-    // Save the updated game
-    await saveGame(game);
+    // Delete the game
+    await deleteGame(gameId);
     
     return {
       statusCode: 200,
@@ -157,9 +101,8 @@ export const handler = async (
         'Access-Control-Allow-Origin': '*'
       },
       body: JSON.stringify({ 
+        message: 'Game deleted successfully',
         gameId,
-        game,
-        message: game.status === 'active' ? 'Game is now active!' : 'Joined game successfully',
         user: {
           userId: user.userId,
           username: user.username,
@@ -168,7 +111,7 @@ export const handler = async (
       })
     };
   } catch (error) {
-    console.error('Error joining game:', error);
+    console.error('Error deleting game:', error);
     return {
       statusCode: 500,
       headers: {

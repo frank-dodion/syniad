@@ -9,7 +9,7 @@ echo "Building TypeScript..."
 npm run build
 
 # Lambda names
-LAMBDAS=("test" "createGame" "joinGame" "getGame" "getAllGames" "authorizer" "docs")
+LAMBDAS=("test" "createGame" "joinGame" "getGame" "deleteGame" "getAllGames" "authorizer" "docs")
 
 # Create Lambda package directories
 echo "Preparing Lambda packages..."
@@ -17,6 +17,7 @@ mkdir -p .build/lambda-packages/test
 mkdir -p .build/lambda-packages/createGame
 mkdir -p .build/lambda-packages/joinGame
 mkdir -p .build/lambda-packages/getGame
+mkdir -p .build/lambda-packages/deleteGame
 mkdir -p .build/lambda-packages/getAllGames
 mkdir -p .build/lambda-packages/authorizer
 mkdir -p .build/lambda-packages/docs
@@ -32,6 +33,7 @@ build_lambda() {
     "createGame") handler_name="createGame" ;;
     "joinGame") handler_name="joinGame" ;;
     "getGame") handler_name="getGame" ;;
+    "deleteGame") handler_name="deleteGame" ;;
     "getAllGames") handler_name="getAllGames" ;;
     "authorizer") handler_name="authorizer" ;;
     "test") handler_name="test" ;;

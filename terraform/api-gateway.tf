@@ -114,6 +114,50 @@ resource "aws_apigatewayv2_route" "get_game" {
   authorization_type = "CUSTOM"
 }
 
+# API Gateway Integration for DeleteGame
+resource "aws_apigatewayv2_integration" "delete_game" {
+  api_id           = aws_apigatewayv2_api.api.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.delete_game.invoke_arn
+  integration_method = "POST"
+}
+
+# API Gateway Route for DeleteGame
+resource "aws_apigatewayv2_route" "delete_game" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "DELETE /games/{gameId}"
+  target    = "integrations/${aws_apigatewayv2_integration.delete_game.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.api_authorizer.id
+  authorization_type = "CUSTOM"
+}
+
+# API Gateway Route for GetMyGames (games for authenticated user)
+resource "aws_apigatewayv2_route" "get_my_games" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /games/my"
+  target    = "integrations/${aws_apigatewayv2_integration.get_all_games.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.api_authorizer.id
+  authorization_type = "CUSTOM"
+}
+
+# API Gateway Route for GetMyGamesAsPlayer1 (games where authenticated user is player1)
+resource "aws_apigatewayv2_route" "get_my_games_player1" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /games/my/player1"
+  target    = "integrations/${aws_apigatewayv2_integration.get_all_games.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.api_authorizer.id
+  authorization_type = "CUSTOM"
+}
+
+# API Gateway Route for GetMyGamesAsPlayer2 (games where authenticated user is player2)
+resource "aws_apigatewayv2_route" "get_my_games_player2" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /games/my/player2"
+  target    = "integrations/${aws_apigatewayv2_integration.get_all_games.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.api_authorizer.id
+  authorization_type = "CUSTOM"
+}
+
 # API Gateway Route for GetAllGames (all games, with pagination query params)
 resource "aws_apigatewayv2_route" "get_all_games" {
   api_id    = aws_apigatewayv2_api.api.id
@@ -186,6 +230,10 @@ resource "aws_apigatewayv2_stage" "default" {
     aws_apigatewayv2_route.create_game,
     aws_apigatewayv2_route.join_game,
     aws_apigatewayv2_route.get_game,
+    aws_apigatewayv2_route.delete_game,
+    aws_apigatewayv2_route.get_my_games,
+    aws_apigatewayv2_route.get_my_games_player1,
+    aws_apigatewayv2_route.get_my_games_player2,
     aws_apigatewayv2_route.get_all_games,
     aws_apigatewayv2_route.get_games_by_player,
     aws_apigatewayv2_route.get_games_by_player1,
@@ -227,6 +275,14 @@ resource "aws_lambda_permission" "get_game_api_gw" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.get_game.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "delete_game_api_gw" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.delete_game.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
 }

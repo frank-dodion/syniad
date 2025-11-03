@@ -3,8 +3,6 @@ info:
   title: Syniad API
   description: API for managing game sessions
   version: 1.0.0
-  contact:
-    name: Syniad API Support
 servers:
   - url: https://api.syniad.com
     description: API Server
@@ -81,18 +79,6 @@ paths:
           $ref: "#/components/responses/ServerError"
       security:
         - bearerAuth: []
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                playerName:
-                  type: string
-                  description: Optional player name (defaults to username or email)
-              example:
-                playerName: My Player Name
     get:
       operationId: getAllGames
       tags:
@@ -158,18 +144,6 @@ paths:
           $ref: "#/components/responses/ServerError"
       security:
         - bearerAuth: []
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                playerName:
-                  type: string
-                  description: Optional player name (defaults to username or email)
-              example:
-                playerName: My Player Name
   /games/{gameId}:
     get:
       operationId: getGame
@@ -196,6 +170,152 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+    delete:
+      operationId: deleteGame
+      tags:
+        - Games
+      summary: Delete a game
+      description: Deletes a game. Only Player 1 (the creator) can delete the game
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: Unique identifier for the game
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Forbidden - Only Player 1 (the creator) can delete the game
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  gameId:
+                    type: string
+                  user:
+                    $ref: "#/components/schemas/User"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games/my:
+    get:
+      operationId: getMyGames
+      tags:
+        - Games
+      summary: Get my games
+      description: Retrieves all games for the authenticated user (games where they are player1 or player2)
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamesResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games/my/player1:
+    get:
+      operationId: getMyGamesAsPlayer1
+      tags:
+        - Games
+      summary: Get my games as player1
+      description: Retrieves all games where the authenticated user is player1 (games they created)
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamesResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games/my/player2:
+    get:
+      operationId: getMyGamesAsPlayer2
+      tags:
+        - Games
+      summary: Get my games as player2
+      description: Retrieves all games where the authenticated user is player2 (games they joined)
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamesResponse"
         "500":
           $ref: "#/components/responses/ServerError"
       security:
