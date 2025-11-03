@@ -261,8 +261,23 @@ export const handler = async (
       };
     }
     
-    // Validate and process hexes if provided
-    let processedHexes: Hex[] | undefined;
+    // Step 1: Fully populate the grid with default 'clear' terrain for all positions
+    // Step 2: Override specific hexes from the request payload if provided
+    let processedHexes: Hex[] = [];
+    const validTerrainTypes: TerrainType[] = ['clear', 'mountain', 'forest', 'water', 'desert', 'swamp'];
+    
+    // First, populate the complete grid with default 'clear' terrain
+    for (let row = 0; row < rows; row++) {
+      for (let column = 0; column < columns; column++) {
+        processedHexes.push({
+          row,
+          column,
+          terrain: 'clear' as TerrainType
+        });
+      }
+    }
+    
+    // Then, override specific hexes from the request payload if provided
     if (hexes !== undefined) {
       if (!Array.isArray(hexes)) {
         return {
@@ -282,9 +297,7 @@ export const handler = async (
         };
       }
       
-      processedHexes = [];
-      const validTerrainTypes: TerrainType[] = ['clear', 'mountain', 'forest', 'water', 'desert', 'swamp'];
-      
+      // Validate and apply provided hexes as overrides
       for (let i = 0; i < hexes.length; i++) {
         const hex = hexes[i];
         if (!hex || typeof hex.row !== 'number' || typeof hex.column !== 'number' || typeof hex.terrain !== 'string') {
@@ -359,25 +372,13 @@ export const handler = async (
           };
         }
         
-        processedHexes.push({
+        // Override the hex at this position
+        const index = hex.row * columns + hex.column;
+        processedHexes[index] = {
           row: hex.row,
           column: hex.column,
           terrain: hex.terrain as TerrainType
-        });
-      }
-    }
-    
-    // If hexes not provided, generate default grid with all clear terrain
-    if (processedHexes === undefined) {
-      processedHexes = [];
-      for (let row = 0; row < rows; row++) {
-        for (let column = 0; column < columns; column++) {
-          processedHexes.push({
-            row,
-            column,
-            terrain: 'clear' as TerrainType
-          });
-        }
+        };
       }
     }
     
