@@ -9,13 +9,17 @@ echo "Building TypeScript..."
 npm run build
 
 # Lambda names
-LAMBDAS=("test" "createGame" "joinGame" "getGame" "deleteGame" "getAllGames" "authorizer" "docs")
+LAMBDAS=("test" "createScenario" "getScenarios" "updateScenario" "deleteScenario" "createGame" "joinGame" "getGame" "deleteGame" "getAllGames" "authorizer" "docs")
 
 # Create Lambda package directories
 echo "Preparing Lambda packages..."
 mkdir -p .build/lambda-packages/test
 mkdir -p .build/lambda-packages/createGame
 mkdir -p .build/lambda-packages/joinGame
+mkdir -p .build/lambda-packages/createScenario
+mkdir -p .build/lambda-packages/getScenarios
+mkdir -p .build/lambda-packages/updateScenario
+mkdir -p .build/lambda-packages/deleteScenario
 mkdir -p .build/lambda-packages/getGame
 mkdir -p .build/lambda-packages/deleteGame
 mkdir -p .build/lambda-packages/getAllGames
@@ -30,6 +34,10 @@ build_lambda() {
   # Handle camelCase mapping (handler files use camelCase)
   # The handler_name matches the file name in handlers/ directory
   case "$lambda_name" in
+    "createScenario") handler_name="createScenario" ;;
+    "getScenarios") handler_name="getScenarios" ;;
+    "updateScenario") handler_name="updateScenario" ;;
+    "deleteScenario") handler_name="deleteScenario" ;;
     "createGame") handler_name="createGame" ;;
     "joinGame") handler_name="joinGame" ;;
     "getGame") handler_name="getGame" ;;

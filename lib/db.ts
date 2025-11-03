@@ -1,14 +1,16 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, QueryCommand, DeleteCommand, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
 import { Buffer } from 'buffer';
-import { Game } from '../shared/types';
+import { Game, Scenario } from '../shared/types';
 
 // In-memory storage for local testing
 const mockStorage: Map<string, Game> = new Map();
 const mockPlayerGames: Map<string, Set<string>> = new Map(); // playerId -> Set of gameIds
+const mockScenarios: Map<string, Scenario> = new Map();
 
 const GAMES_TABLE = process.env.GAMES_TABLE || '';
 const PLAYER_GAMES_TABLE = process.env.PLAYER_GAMES_TABLE || '';
+const SCENARIOS_TABLE = process.env.SCENARIOS_TABLE || '';
 const LOCAL_MODE = process.env.LOCAL_MODE === 'true';
 
 // Use mock storage in local mode, real DynamoDB otherwise
@@ -485,6 +487,158 @@ export async function deleteGame(gameId: string): Promise<void> {
       Key: { gameId }
     })
   );
+}
+
+/**
+ * Save a scenario to the database
+ */
+export async function saveScenario(scenario: Scenario): Promise<void> {
+  if (useMock) {
+    // Local mode: use in-memory storage
+    mockScenarios.set(scenario.scenarioId, scenario);
+    return Promise.resolve();
+  }
+  
+  // Production: use real DynamoDB with AWS SDK v3
+  await dynamodbClient!.send(
+    new PutCommand({
+      TableName: SCENARIOS_TABLE,
+      Item: scenario
+    })
+  );
+}
+
+/**
+ * Get a scenario by ID
+ */
+export async function getScenario(scenarioId: string): Promise<Scenario | undefined> {
+  if (useMock) {
+    // Local mode: use in-memory storage
+    return Promise.resolve(mockScenarios.get(scenarioId));
+  }
+  
+  // Production: use real DynamoDB with AWS SDK v3
+  const result = await dynamodbClient!.send(
+    new GetCommand({
+      TableName: SCENARIOS_TABLE,
+      Key: { scenarioId }
+    })
+  );
+  
+  return result.Item as Scenario | undefined;
+}
+
+/**
+ * Update a scenario
+ */
+export async function updateScenario(scenario: Scenario): Promise<void> {
+  if (useMock) {
+    // Local mode: update in-memory storage
+    if (!mockScenarios.has(scenario.scenarioId)) {
+      throw new Error('Scenario not found');
+    }
+    mockScenarios.set(scenario.scenarioId, {
+      ...scenario,
+      updatedAt: new Date().toISOString()
+    });
+    return Promise.resolve();
+  }
+  
+  // Production: use real DynamoDB with AWS SDK v3
+  // First check if scenario exists
+  const existing = await getScenario(scenario.scenarioId);
+  if (!existing) {
+    throw new Error('Scenario not found');
+  }
+  
+  await dynamodbClient!.send(
+    new PutCommand({
+      TableName: SCENARIOS_TABLE,
+      Item: {
+        ...scenario,
+        updatedAt: new Date().toISOString()
+      }
+    })
+  );
+}
+
+/**
+ * Delete a scenario
+ */
+export async function deleteScenario(scenarioId: string): Promise<void> {
+  if (useMock) {
+    // Local mode: delete from in-memory storage
+    if (!mockScenarios.has(scenarioId)) {
+      throw new Error('Scenario not found');
+    }
+    mockScenarios.delete(scenarioId);
+    return Promise.resolve();
+  }
+  
+  // Production: use real DynamoDB with AWS SDK v3
+  // First check if scenario exists
+  const existing = await getScenario(scenarioId);
+  if (!existing) {
+    throw new Error('Scenario not found');
+  }
+  
+  await dynamodbClient!.send(
+    new DeleteCommand({
+      TableName: SCENARIOS_TABLE,
+      Key: { scenarioId }
+    })
+  );
+}
+
+/**
+ * Get all scenarios with pagination
+ */
+export async function getAllScenarios(limit?: number, nextToken?: string): Promise<PaginatedResult<Scenario>> {
+  if (useMock) {
+    // Local mode: return all scenarios from mock storage
+    const allScenarios = Array.from(mockScenarios.values());
+    const maxLimit = limit || 100;
+    const scenarios = allScenarios.slice(0, maxLimit);
+    return {
+      items: scenarios,
+      hasMore: allScenarios.length > maxLimit,
+      nextToken: allScenarios.length > maxLimit ? 'mock-token' : undefined
+    };
+  }
+  
+  // Production: use real DynamoDB with AWS SDK v3
+  const scanLimit = limit ? Math.min(limit, 100) : 100; // DynamoDB scan limit is 1MB, but we'll limit to 100 items
+  const scanParams: any = {
+    TableName: SCENARIOS_TABLE,
+    Limit: scanLimit
+  };
+  
+  // Handle pagination token
+  if (nextToken) {
+    try {
+      const decoded = JSON.parse(Buffer.from(nextToken, 'base64').toString('utf-8'));
+      scanParams.ExclusiveStartKey = decoded;
+    } catch (e) {
+      console.error('Error decoding nextToken:', e);
+    }
+  }
+  
+  const result = await dynamodbClient!.send(new ScanCommand(scanParams));
+  const scenarios = (result.Items || []) as Scenario[];
+  
+  // Generate nextToken if there are more items
+  let nextTokenValue: string | undefined;
+  if (result.LastEvaluatedKey) {
+    nextTokenValue = Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64');
+  }
+  
+  const hasMore = !!result.LastEvaluatedKey;
+  
+  return {
+    items: scenarios,
+    hasMore,
+    nextToken: nextTokenValue
+  };
 }
 
 export async function getGamesByPlayer2(player2Id: string, limit?: number, nextToken?: string): Promise<PaginatedResult<Game>> {

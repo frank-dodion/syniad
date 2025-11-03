@@ -1,6 +1,27 @@
+export type TerrainType = 'clear' | 'mountain' | 'forest' | 'water' | 'desert' | 'swamp';
+
+export interface Hex {
+  row: number;
+  column: number;
+  terrain: TerrainType;
+}
+
+export interface Scenario {
+  scenarioId: string;
+  title: string;
+  description: string;
+  columns: number;
+  rows: number;
+  turns: number;
+  hexes?: Hex[]; // Optional array of hex terrain definitions
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface Game {
   gameId: string;
   status: 'waiting' | 'active' | 'finished';
+  scenarioId: string; // Reference to the scenario this game uses
   player1: Player; // Required: Creator (Player 1) - always the game creator
   player2?: Player; // Optional: Second player (Player 2) - set when someone joins
   // Denormalized index fields for efficient database queries:

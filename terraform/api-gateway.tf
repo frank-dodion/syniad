@@ -54,6 +54,38 @@ resource "aws_apigatewayv2_integration" "get_all_games" {
   integration_method = "POST"
 }
 
+# API Gateway Integration for CreateScenario
+resource "aws_apigatewayv2_integration" "create_scenario" {
+  api_id           = aws_apigatewayv2_api.api.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.create_scenario.invoke_arn
+  integration_method = "POST"
+}
+
+# API Gateway Integration for GetScenarios
+resource "aws_apigatewayv2_integration" "get_scenarios" {
+  api_id           = aws_apigatewayv2_api.api.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.get_scenarios.invoke_arn
+  integration_method = "POST"
+}
+
+# API Gateway Integration for UpdateScenario
+resource "aws_apigatewayv2_integration" "update_scenario" {
+  api_id           = aws_apigatewayv2_api.api.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.update_scenario.invoke_arn
+  integration_method = "POST"
+}
+
+# API Gateway Integration for DeleteScenario
+resource "aws_apigatewayv2_integration" "delete_scenario" {
+  api_id           = aws_apigatewayv2_api.api.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.delete_scenario.invoke_arn
+  integration_method = "POST"
+}
+
 # API Gateway Integration for Docs
 resource "aws_apigatewayv2_integration" "docs" {
   api_id           = aws_apigatewayv2_api.api.id
@@ -127,6 +159,51 @@ resource "aws_apigatewayv2_route" "delete_game" {
   api_id    = aws_apigatewayv2_api.api.id
   route_key = "DELETE /games/{gameId}"
   target    = "integrations/${aws_apigatewayv2_integration.delete_game.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.api_authorizer.id
+  authorization_type = "CUSTOM"
+}
+
+# API Gateway Route for CreateScenario
+resource "aws_apigatewayv2_route" "create_scenario" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "POST /scenarios"
+  target    = "integrations/${aws_apigatewayv2_integration.create_scenario.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.api_authorizer.id
+  authorization_type = "CUSTOM"
+}
+
+# API Gateway Route for GetScenarios (all scenarios)
+resource "aws_apigatewayv2_route" "get_scenarios" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /scenarios"
+  target    = "integrations/${aws_apigatewayv2_integration.get_scenarios.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.api_authorizer.id
+  authorization_type = "CUSTOM"
+}
+
+# API Gateway Route for GetScenario (single scenario by ID)
+resource "aws_apigatewayv2_route" "get_scenario" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /scenarios/{scenarioId}"
+  target    = "integrations/${aws_apigatewayv2_integration.get_scenarios.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.api_authorizer.id
+  authorization_type = "CUSTOM"
+}
+
+# API Gateway Route for UpdateScenario
+resource "aws_apigatewayv2_route" "update_scenario" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "PUT /scenarios/{scenarioId}"
+  target    = "integrations/${aws_apigatewayv2_integration.update_scenario.id}"
+  authorizer_id = aws_apigatewayv2_authorizer.api_authorizer.id
+  authorization_type = "CUSTOM"
+}
+
+# API Gateway Route for DeleteScenario
+resource "aws_apigatewayv2_route" "delete_scenario" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "DELETE /scenarios/{scenarioId}"
+  target    = "integrations/${aws_apigatewayv2_integration.delete_scenario.id}"
   authorizer_id = aws_apigatewayv2_authorizer.api_authorizer.id
   authorization_type = "CUSTOM"
 }
@@ -227,6 +304,11 @@ resource "aws_apigatewayv2_stage" "default" {
   # Ensure routes are created before stage deployment
   depends_on = [
     aws_apigatewayv2_route.test,
+    aws_apigatewayv2_route.create_scenario,
+    aws_apigatewayv2_route.get_scenarios,
+    aws_apigatewayv2_route.get_scenario,
+    aws_apigatewayv2_route.update_scenario,
+    aws_apigatewayv2_route.delete_scenario,
     aws_apigatewayv2_route.create_game,
     aws_apigatewayv2_route.join_game,
     aws_apigatewayv2_route.get_game,
@@ -283,6 +365,38 @@ resource "aws_lambda_permission" "delete_game_api_gw" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.delete_game.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "create_scenario_api_gw" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.create_scenario.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "get_scenarios_api_gw" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.get_scenarios.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "update_scenario_api_gw" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.update_scenario.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "delete_scenario_api_gw" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.delete_scenario.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
 }

@@ -47,7 +47,7 @@ paths:
       tags:
         - Games
       summary: Create a new game
-      description: Creates a new game with the authenticated user as player1
+      description: Creates a new game with the authenticated user as player1. Requires scenarioId in request body
       parameters:
         - name: limit
           in: query
@@ -212,6 +212,303 @@ paths:
                     type: string
                   user:
                     $ref: "#/components/schemas/User"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /scenarios:
+    post:
+      operationId: createScenario
+      tags:
+        - General
+      summary: Create a scenario
+      description: Creates a new scenario. Hexes are optional - omitted hexes default to clear terrain
+      parameters: []
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scenarioId:
+                    type: string
+                    format: uuid
+                  scenario:
+                    type: object
+                    properties:
+                      scenarioId:
+                        type: string
+                        format: uuid
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      columns:
+                        type: integer
+                      rows:
+                        type: integer
+                      turns:
+                        type: integer
+                      hexes:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            row:
+                              type: integer
+                            column:
+                              type: integer
+                            terrain:
+                              type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+                  user:
+                    $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+    get:
+      operationId: getAllScenarios
+      tags:
+        - General
+      summary: Get all scenarios
+      description: Retrieves all scenarios with pagination support
+      parameters: []
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scenarios:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        scenarioId:
+                          type: string
+                          format: uuid
+                        title:
+                          type: string
+                        description:
+                          type: string
+                        columns:
+                          type: integer
+                        rows:
+                          type: integer
+                        turns:
+                          type: integer
+                        hexes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              row:
+                                type: integer
+                              column:
+                                type: integer
+                              terrain:
+                                type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+                        updatedAt:
+                          type: string
+                          format: date-time
+                  count:
+                    type: integer
+                  hasMore:
+                    type: boolean
+                  nextToken:
+                    type: string
+                  user:
+                    $ref: "#/components/schemas/User"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /scenarios/{scenarioId}:
+    get:
+      operationId: getScenario
+      tags:
+        - General
+      summary: Get a scenario
+      description: Retrieves a specific scenario by ID
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          description: Unique identifier for the scenario
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scenarioId:
+                    type: string
+                    format: uuid
+                  scenario:
+                    type: object
+                    properties:
+                      scenarioId:
+                        type: string
+                        format: uuid
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      columns:
+                        type: integer
+                      rows:
+                        type: integer
+                      turns:
+                        type: integer
+                      hexes:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            row:
+                              type: integer
+                            column:
+                              type: integer
+                            terrain:
+                              type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
+                  user:
+                    $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+    put:
+      operationId: updateScenario
+      tags:
+        - General
+      summary: Update a scenario
+      description: Updates an existing scenario. All fields are optional
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          description: Unique identifier for the scenario
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scenarioId:
+                    type: string
+                    format: uuid
+                  scenario:
+                    type: object
+                    properties:
+                      scenarioId:
+                        type: string
+                        format: uuid
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      columns:
+                        type: integer
+                      rows:
+                        type: integer
+                      turns:
+                        type: integer
+                      hexes:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            row:
+                              type: integer
+                            column:
+                              type: integer
+                            terrain:
+                              type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
+                  user:
+                    $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+    delete:
+      operationId: deleteScenario
+      tags:
+        - General
+      summary: Delete a scenario
+      description: Deletes a scenario
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          description: Unique identifier for the scenario
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Scenario deleted successfully
+                  scenarioId:
+                    type: string
+                    format: uuid
+                  user:
+                    $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
         "500":

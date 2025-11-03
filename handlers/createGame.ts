@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { v4 as uuidv4 } from 'uuid';
-import { saveGame } from '../lib/db';
+import { saveGame, getScenario } from '../lib/db';
 import { extractUserIdentity } from '../lib/auth';
 import { Game, Player } from '../shared/types';
 
@@ -31,6 +31,71 @@ export const handler = async (
       };
     }
 
+    // Parse request body to get scenarioId
+    let body: any = {};
+    if (event.body) {
+      try {
+        body = JSON.parse(event.body);
+      } catch (e) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({ 
+            error: 'Invalid JSON in request body',
+            user: {
+              userId: user.userId,
+              username: user.username,
+              email: user.email
+            }
+          })
+        };
+      }
+    }
+    
+    const scenarioId = body.scenarioId;
+    
+    if (!scenarioId || typeof scenarioId !== 'string') {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ 
+          error: 'Missing or invalid scenarioId field',
+          user: {
+            userId: user.userId,
+            username: user.username,
+            email: user.email
+          }
+        })
+      };
+    }
+    
+    // Validate that the scenario exists
+    const scenario = await getScenario(scenarioId);
+    if (!scenario) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ 
+          error: 'Scenario not found',
+          scenarioId,
+          user: {
+            userId: user.userId,
+            username: user.username,
+            email: user.email
+          }
+        })
+      };
+    }
+    
     // Use authenticated user for player1 - no payload needed
     const playerName = user.username || user.email || `User-${userId.substring(0, 8)}`;
     
@@ -38,6 +103,7 @@ export const handler = async (
     const game: Game = {
       gameId,
       status: 'waiting',
+      scenarioId, // Reference to the scenario
       player1: { 
         name: playerName, 
         userId: userId // Required: Cognito sub - Creator is always Player 1

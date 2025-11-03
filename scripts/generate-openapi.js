@@ -212,7 +212,7 @@ function generateOpenAPISpec() {
     // Add request body for POST/PUT only if one is generated
     // If no request body is generated, ensure it's not present (override preserved content)
     if (['post', 'put', 'patch'].includes(methodLower)) {
-      const generatedRequestBody = generateRequestBody(openApiPath);
+      const generatedRequestBody = generateRequestBody(openApiPath, method);
       if (generatedRequestBody) {
         operation.requestBody = generatedRequestBody;
       } else {
@@ -232,6 +232,11 @@ function generateOperationId(method, routePath) {
   const parts = routePath.split('/').filter(p => p && !p.startsWith('{'));
   
   // Special handling for common patterns (use camelCase for consistency)
+  if (routePath === '/scenarios' && method === 'post') return 'createScenario';
+  if (routePath === '/scenarios' && method === 'get') return 'getAllScenarios';
+  if (routePath.startsWith('/scenarios/{scenarioId}') && method === 'get') return 'getScenario';
+  if (routePath.startsWith('/scenarios/{scenarioId}') && method === 'put') return 'updateScenario';
+  if (routePath.startsWith('/scenarios/{scenarioId}') && method === 'delete') return 'deleteScenario';
   if (routePath === '/games/my/player1') return 'getMyGamesAsPlayer1';
   if (routePath === '/games/my/player2') return 'getMyGamesAsPlayer2';
   if (routePath === '/games/my') return 'getMyGames';
@@ -266,6 +271,11 @@ function generateSummary(method, path) {
                  method === 'delete' ? 'Delete' : 'Process';
   
   if (path === '/test') return 'Test endpoint';
+  if (path === '/scenarios' && method === 'post') return 'Create a scenario';
+  if (path === '/scenarios' && method === 'get') return 'Get all scenarios';
+  if (path.startsWith('/scenarios/{scenarioId}') && method === 'get') return 'Get a scenario';
+  if (path.startsWith('/scenarios/{scenarioId}') && method === 'put') return 'Update a scenario';
+  if (path.startsWith('/scenarios/{scenarioId}') && method === 'delete') return 'Delete a scenario';
   if (path === '/games/my/player1') return 'Get my games as player1';
   if (path === '/games/my/player2') return 'Get my games as player2';
   if (path === '/games/my') return 'Get my games';
@@ -286,11 +296,16 @@ function generateSummary(method, path) {
 
 function generateDescription(method, path) {
   if (path === '/test') return 'Returns a test message with user information';
+  if (path === '/scenarios' && method === 'post') return 'Creates a new scenario. Hexes are optional - omitted hexes default to clear terrain';
+  if (path === '/scenarios' && method === 'get') return 'Retrieves all scenarios with pagination support';
+  if (path.startsWith('/scenarios/{scenarioId}') && method === 'get') return 'Retrieves a specific scenario by ID';
+  if (path.startsWith('/scenarios/{scenarioId}') && method === 'put') return 'Updates an existing scenario. All fields are optional';
+  if (path.startsWith('/scenarios/{scenarioId}') && method === 'delete') return 'Deletes a scenario';
   if (path === '/games/my/player1') return 'Retrieves all games where the authenticated user is player1 (games they created)';
   if (path === '/games/my/player2') return 'Retrieves all games where the authenticated user is player2 (games they joined)';
   if (path === '/games/my') return 'Retrieves all games for the authenticated user (games where they are player1 or player2)';
   if (path === '/games' && method === 'get') return 'Retrieves all games with pagination support';
-  if (path === '/games' && method === 'post') return 'Creates a new game with the authenticated user as player1';
+  if (path === '/games' && method === 'post') return 'Creates a new game with the authenticated user as player1. Requires scenarioId in request body';
   if (path === '/games/{gameId}' && method === 'get') return 'Retrieves details for a specific game by ID';
   if (path === '/games/{gameId}' && method === 'delete') return 'Deletes a game. Only Player 1 (the creator) can delete the game';
   if (path === '/games/{gameId}/join') return 'Joins an existing game as player2';
@@ -348,6 +363,7 @@ function extractParameters(path) {
 function getParameterDescription(name) {
   const descriptions = {
     gameId: 'Unique identifier for the game',
+    scenarioId: 'Unique identifier for the scenario',
     playerId: 'User ID (Cognito sub) of the player',
     player1Id: 'User ID (Cognito sub) of player1',
     player2Id: 'User ID (Cognito sub) of player2'
@@ -362,8 +378,104 @@ function getParameterSchema(name) {
   return { type: 'string' };
 }
 
-function generateRequestBody(path) {
-  // No endpoints require request body - both create and join use authenticated user automatically
+function generateRequestBody(path, method) {
+  // POST /scenarios requires request body
+  if (path === '/scenarios' && method === 'post') {
+    return {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            required: ['title', 'description', 'columns', 'rows', 'turns'],
+            properties: {
+              title: { type: 'string', description: 'Scenario title' },
+              description: { type: 'string', description: 'Scenario description' },
+              columns: { type: 'integer', minimum: 1, description: 'Number of columns in the game map' },
+              rows: { type: 'integer', minimum: 1, description: 'Number of rows in the game map' },
+              turns: { type: 'integer', minimum: 1, description: 'Number of turns in the scenario' },
+              hexes: {
+                type: 'array',
+                description: 'Optional array of hex terrain definitions. If omitted, a complete grid of clear terrain hexes will be generated for all rows and columns. Format: [{row: number, column: number, terrain: string}]',
+                items: {
+                  type: 'object',
+                  required: ['row', 'column', 'terrain'],
+                  properties: {
+                    row: { type: 'integer', minimum: 0, description: 'Row index (0-based)' },
+                    column: { type: 'integer', minimum: 0, description: 'Column index (0-based)' },
+                    terrain: { 
+                      type: 'string', 
+                      enum: ['clear', 'mountain', 'forest', 'water', 'desert', 'swamp'],
+                      description: 'Terrain type for this hex'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    };
+  }
+  
+  // PUT /scenarios/{scenarioId} requires request body
+  if (path.startsWith('/scenarios/{scenarioId}') && method === 'put') {
+    return {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            description: 'All fields are optional. Only provided fields will be updated.',
+            properties: {
+              title: { type: 'string', description: 'Scenario title' },
+              description: { type: 'string', description: 'Scenario description' },
+              columns: { type: 'integer', minimum: 1, description: 'Number of columns in the game map' },
+              rows: { type: 'integer', minimum: 1, description: 'Number of rows in the game map' },
+              turns: { type: 'integer', minimum: 1, description: 'Number of turns in the scenario' },
+              hexes: {
+                type: ['array', 'null'],
+                description: 'Array of hex terrain definitions, or null to clear. Format: [{row: number, column: number, terrain: string}]',
+                items: {
+                  type: 'object',
+                  required: ['row', 'column', 'terrain'],
+                  properties: {
+                    row: { type: 'integer', minimum: 0, description: 'Row index (0-based)' },
+                    column: { type: 'integer', minimum: 0, description: 'Column index (0-based)' },
+                    terrain: { 
+                      type: 'string', 
+                      enum: ['clear', 'mountain', 'forest', 'water', 'desert', 'swamp'],
+                      description: 'Terrain type for this hex'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    };
+  }
+  
+  // POST /games requires scenarioId
+  if (path === '/games' && method === 'post') {
+    return {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            required: ['scenarioId'],
+            properties: {
+              scenarioId: { type: 'string', format: 'uuid', description: 'ID of the scenario to use for this game' }
+            }
+          }
+        }
+      }
+    };
+  }
+  
+  // No other endpoints require request body
   return undefined;
 }
 
@@ -383,7 +495,8 @@ function generateResponses(method, path) {
   if (path.includes('{')) {
     responses['400'] = { $ref: '#/components/responses/BadRequest' };
     responses['404'] = { $ref: '#/components/responses/NotFound' };
-    if (method === 'delete') {
+    // 403 only for game deletion (not scenario deletion)
+    if (path.startsWith('/games/{gameId}') && method === 'delete') {
       responses['403'] = { 
         description: 'Forbidden - Only Player 1 (the creator) can delete the game',
         content: {
@@ -437,6 +550,156 @@ function getResponseSchema(method, path) {
       properties: {
         message: { type: 'string' },
         timestamp: { type: 'string', format: 'date-time' },
+        user: { $ref: '#/components/schemas/User' }
+      }
+    };
+  }
+  
+  if (path === '/scenarios' && method === 'post') {
+    return {
+      type: 'object',
+      properties: {
+        scenarioId: { type: 'string', format: 'uuid' },
+        scenario: {
+          type: 'object',
+          properties: {
+            scenarioId: { type: 'string', format: 'uuid' },
+            title: { type: 'string' },
+            description: { type: 'string' },
+            columns: { type: 'integer' },
+            rows: { type: 'integer' },
+            turns: { type: 'integer' },
+            hexes: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  row: { type: 'integer' },
+                  column: { type: 'integer' },
+                  terrain: { type: 'string' }
+                }
+              }
+            },
+            createdAt: { type: 'string', format: 'date-time' }
+          }
+        },
+        user: { $ref: '#/components/schemas/User' }
+      }
+    };
+  }
+  
+  if (path.startsWith('/scenarios/{scenarioId}') && method === 'put') {
+    return {
+      type: 'object',
+      properties: {
+        scenarioId: { type: 'string', format: 'uuid' },
+        scenario: {
+          type: 'object',
+          properties: {
+            scenarioId: { type: 'string', format: 'uuid' },
+            title: { type: 'string' },
+            description: { type: 'string' },
+            columns: { type: 'integer' },
+            rows: { type: 'integer' },
+            turns: { type: 'integer' },
+            hexes: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  row: { type: 'integer' },
+                  column: { type: 'integer' },
+                  terrain: { type: 'string' }
+                }
+              }
+            },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' }
+          }
+        },
+        user: { $ref: '#/components/schemas/User' }
+      }
+    };
+  }
+  
+  if (path.startsWith('/scenarios/{scenarioId}') && method === 'delete') {
+    return {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Scenario deleted successfully' },
+        scenarioId: { type: 'string', format: 'uuid' },
+        user: { $ref: '#/components/schemas/User' }
+      }
+    };
+  }
+  
+  if (path === '/scenarios' && method === 'get' || path.startsWith('/scenarios/{scenarioId}')) {
+    if (path.startsWith('/scenarios/{scenarioId}') && method === 'get') {
+      return {
+        type: 'object',
+        properties: {
+          scenarioId: { type: 'string', format: 'uuid' },
+          scenario: {
+            type: 'object',
+            properties: {
+              scenarioId: { type: 'string', format: 'uuid' },
+              title: { type: 'string' },
+              description: { type: 'string' },
+              columns: { type: 'integer' },
+              rows: { type: 'integer' },
+              turns: { type: 'integer' },
+              hexes: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    row: { type: 'integer' },
+                    column: { type: 'integer' },
+                    terrain: { type: 'string' }
+                  }
+                }
+              },
+              createdAt: { type: 'string', format: 'date-time' },
+              updatedAt: { type: 'string', format: 'date-time' }
+            }
+          },
+          user: { $ref: '#/components/schemas/User' }
+        }
+      };
+    }
+    return {
+      type: 'object',
+      properties: {
+        scenarios: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              scenarioId: { type: 'string', format: 'uuid' },
+              title: { type: 'string' },
+              description: { type: 'string' },
+              columns: { type: 'integer' },
+              rows: { type: 'integer' },
+              turns: { type: 'integer' },
+              hexes: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    row: { type: 'integer' },
+                    column: { type: 'integer' },
+                    terrain: { type: 'string' }
+                  }
+                }
+              },
+              createdAt: { type: 'string', format: 'date-time' },
+              updatedAt: { type: 'string', format: 'date-time' }
+            }
+          }
+        },
+        count: { type: 'integer' },
+        hasMore: { type: 'boolean' },
+        nextToken: { type: 'string' },
         user: { $ref: '#/components/schemas/User' }
       }
     };

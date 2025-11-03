@@ -119,6 +119,46 @@ data "archive_file" "get_all_games_lambda" {
   excludes = ["node_modules/.cache"]
 }
 
+data "archive_file" "create_scenario_lambda" {
+  type        = "zip"
+  source_dir  = "${path.module}/../.build/lambda-packages/createScenario"
+  output_path = "${path.module}/lambda-zips/createScenario.zip"
+  
+  depends_on = [null_resource.build_lambda]
+  
+  excludes = ["node_modules/.cache"]
+}
+
+data "archive_file" "get_scenarios_lambda" {
+  type        = "zip"
+  source_dir  = "${path.module}/../.build/lambda-packages/getScenarios"
+  output_path = "${path.module}/lambda-zips/getScenarios.zip"
+  
+  depends_on = [null_resource.build_lambda]
+  
+  excludes = ["node_modules/.cache"]
+}
+
+data "archive_file" "update_scenario_lambda" {
+  type        = "zip"
+  source_dir  = "${path.module}/../.build/lambda-packages/updateScenario"
+  output_path = "${path.module}/lambda-zips/updateScenario.zip"
+  
+  depends_on = [null_resource.build_lambda]
+  
+  excludes = ["node_modules/.cache"]
+}
+
+data "archive_file" "delete_scenario_lambda" {
+  type        = "zip"
+  source_dir  = "${path.module}/../.build/lambda-packages/deleteScenario"
+  output_path = "${path.module}/lambda-zips/deleteScenario.zip"
+  
+  depends_on = [null_resource.build_lambda]
+  
+  excludes = ["node_modules/.cache"]
+}
+
 data "archive_file" "authorizer_lambda" {
   type        = "zip"
   source_dir  = "${path.module}/../.build/lambda-packages/authorizer"
@@ -209,6 +249,7 @@ resource "aws_lambda_function" "create_game" {
     variables = {
       GAMES_TABLE = aws_dynamodb_table.games.name
       PLAYER_GAMES_TABLE = aws_dynamodb_table.player_games.name
+      SCENARIOS_TABLE = aws_dynamodb_table.scenarios.name
     }
   }
 
@@ -293,6 +334,86 @@ resource "aws_lambda_function" "get_all_games" {
     variables = {
       GAMES_TABLE = aws_dynamodb_table.games.name
       PLAYER_GAMES_TABLE = aws_dynamodb_table.player_games.name
+    }
+  }
+
+  tags = local.common_tags
+}
+
+# CreateScenario Lambda function
+resource "aws_lambda_function" "create_scenario" {
+  filename         = data.archive_file.create_scenario_lambda.output_path
+  function_name    = "${local.service_name}-create-scenario"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  runtime         = "nodejs20.x"
+  timeout         = var.lambda_timeout
+  memory_size     = var.lambda_memory_size
+  source_code_hash = data.archive_file.create_scenario_lambda.output_base64sha256
+
+  environment {
+    variables = {
+      SCENARIOS_TABLE = aws_dynamodb_table.scenarios.name
+    }
+  }
+
+  tags = local.common_tags
+}
+
+# GetScenarios Lambda function
+resource "aws_lambda_function" "get_scenarios" {
+  filename         = data.archive_file.get_scenarios_lambda.output_path
+  function_name    = "${local.service_name}-get-scenarios"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  runtime         = "nodejs20.x"
+  timeout         = var.lambda_timeout
+  memory_size     = var.lambda_memory_size
+  source_code_hash = data.archive_file.get_scenarios_lambda.output_base64sha256
+
+  environment {
+    variables = {
+      SCENARIOS_TABLE = aws_dynamodb_table.scenarios.name
+    }
+  }
+
+  tags = local.common_tags
+}
+
+# UpdateScenario Lambda function
+resource "aws_lambda_function" "update_scenario" {
+  filename         = data.archive_file.update_scenario_lambda.output_path
+  function_name    = "${local.service_name}-update-scenario"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  runtime         = "nodejs20.x"
+  timeout         = var.lambda_timeout
+  memory_size     = var.lambda_memory_size
+  source_code_hash = data.archive_file.update_scenario_lambda.output_base64sha256
+
+  environment {
+    variables = {
+      SCENARIOS_TABLE = aws_dynamodb_table.scenarios.name
+    }
+  }
+
+  tags = local.common_tags
+}
+
+# DeleteScenario Lambda function
+resource "aws_lambda_function" "delete_scenario" {
+  filename         = data.archive_file.delete_scenario_lambda.output_path
+  function_name    = "${local.service_name}-delete-scenario"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  runtime         = "nodejs20.x"
+  timeout         = var.lambda_timeout
+  memory_size     = var.lambda_memory_size
+  source_code_hash = data.archive_file.delete_scenario_lambda.output_base64sha256
+
+  environment {
+    variables = {
+      SCENARIOS_TABLE = aws_dynamodb_table.scenarios.name
     }
   }
 

@@ -71,3 +71,19 @@ resource "aws_dynamodb_table" "player_games" {
   })
 }
 
+# DynamoDB Table for Scenarios
+resource "aws_dynamodb_table" "scenarios" {
+  name           = "${local.service_name}-scenarios"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "scenarioId"
+
+  attribute {
+    name = "scenarioId"
+    type = "S"
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "${local.service_name}-scenarios"
+  })
+}
+
