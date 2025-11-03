@@ -16,8 +16,9 @@ resource "aws_dynamodb_table" "games" {
 
   # GSI to query games by creator (efficient "games created by user" queries)
   global_secondary_index {
-    name     = "creatorId-index"
-    hash_key = "creatorId"
+    name            = "creatorId-index"
+    hash_key        = "creatorId"
+    projection_type = "ALL" # Include all attributes in the index
   }
 
   tags = merge(local.common_tags, {
@@ -48,8 +49,9 @@ resource "aws_dynamodb_table" "player_games" {
   # GSI to query players by gameId (reverse lookup: which players are in a game)
   # Can also filter by playerIndex to get only creators (playerIndex = 1) or joiners (playerIndex > 1)
   global_secondary_index {
-    name     = "gameId-index"
-    hash_key = "gameId"
+    name            = "gameId-index"
+    hash_key        = "gameId"
+    projection_type = "ALL" # Include all attributes in the index
   }
 
   tags = merge(local.common_tags, {
