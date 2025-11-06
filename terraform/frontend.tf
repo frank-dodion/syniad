@@ -33,7 +33,8 @@ resource "aws_s3_bucket_policy" "frontend" {
   bucket = aws_s3_bucket.frontend.id
   depends_on = [
     aws_s3_bucket_public_access_block.frontend,
-    aws_cloudfront_origin_access_control.frontend
+    aws_cloudfront_origin_access_control.frontend,
+    aws_cloudfront_distribution.frontend
   ]
 
   policy = jsonencode({
@@ -179,8 +180,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   depends_on = [
-    aws_acm_certificate_validation.frontend,
-    aws_s3_bucket_policy.frontend
+    aws_acm_certificate_validation.frontend
   ]
 
   tags = local.common_tags
