@@ -69,3 +69,18 @@ output "frontend_cloudfront_distribution_id" {
   value       = aws_cloudfront_distribution.frontend.id
 }
 
+output "scenario_editor_url" {
+  description = "Scenario editor application URL"
+  value       = "https://${local.editor_domain_name}"
+}
+
+output "scenario_editor_bucket_name" {
+  description = "S3 bucket name for scenario editor"
+  value       = aws_s3_bucket.scenario_editor.id
+}
+
+output "scenario_editor_cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for scenario editor"
+  value       = aws_cloudfront_distribution.scenario_editor.id
+}
+

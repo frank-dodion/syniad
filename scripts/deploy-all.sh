@@ -1,0 +1,111 @@
+#!/bin/bash
+
+# Complete deployment script - builds Lambdas, applies Terraform, and deploys both frontends
+# Usage: ./scripts/deploy-all.sh [stage]
+# Default stage: dev
+
+set -e
+
+STAGE=${1:-dev}
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║   Syniad Full Deployment Pipeline    ║${NC}"
+echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
+echo ""
+echo -e "${GREEN}Stage: ${STAGE}${NC}"
+echo ""
+
+# Step 1: Build Lambda functions
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${YELLOW}Step 1: Building Lambda functions...${NC}"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+cd "$PROJECT_ROOT"
+npm run build:lambda
+if [ $? -ne 0 ]; then
+    echo -e "${RED}✗ Lambda build failed${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Lambda functions built${NC}"
+echo ""
+
+# Step 2: Apply Terraform
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${YELLOW}Step 2: Applying Terraform infrastructure...${NC}"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+cd "$PROJECT_ROOT/terraform"
+
+# Select or create workspace
+if [ "$STAGE" = "dev" ]; then
+    terraform workspace select dev 2>/dev/null || terraform workspace new dev
+elif [ "$STAGE" = "prod" ]; then
+    terraform workspace select prod 2>/dev/null || terraform workspace new prod
+fi
+
+terraform apply -var="stage=${STAGE}" -auto-approve
+if [ $? -ne 0 ]; then
+    echo -e "${RED}✗ Terraform apply failed${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Infrastructure updated${NC}"
+echo ""
+
+# Step 3: Deploy Scenario Editor
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${YELLOW}Step 3: Deploying Scenario Editor...${NC}"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+cd "$PROJECT_ROOT"
+./scripts/deploy-frontend.sh "$STAGE"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}✗ Scenario Editor deployment failed${NC}"
+    exit 1
+fi
+echo ""
+
+# Step 4: Deploy Game App
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${YELLOW}Step 4: Deploying Game App...${NC}"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+cd "$PROJECT_ROOT"
+./scripts/deploy-game.sh
+if [ $? -ne 0 ]; then
+    echo -e "${RED}✗ Game App deployment failed${NC}"
+    exit 1
+fi
+echo ""
+
+# Step 5: Summary
+echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║        Deployment Complete!            ║${NC}"
+echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
+echo ""
+
+cd "$PROJECT_ROOT/terraform"
+EDITOR_URL=$(terraform output -raw scenario_editor_url 2>/dev/null || echo "")
+GAME_URL=$(terraform output -raw frontend_url 2>/dev/null || echo "")
+API_URL=$(terraform output -raw custom_domain_url 2>/dev/null || terraform output -raw api_url 2>/dev/null || echo "")
+
+echo -e "${GREEN}Deployed Applications:${NC}"
+if [ -n "$EDITOR_URL" ]; then
+    echo -e "  ${GREEN}✓${NC} Scenario Editor: ${EDITOR_URL}"
+fi
+if [ -n "$GAME_URL" ]; then
+    echo -e "  ${GREEN}✓${NC} Game App:        ${GAME_URL}"
+fi
+if [ -n "$API_URL" ]; then
+    echo -e "  ${GREEN}✓${NC} API:             ${API_URL}"
+    echo -e "  ${GREEN}✓${NC} API Docs:        ${API_URL}/docs"
+fi
+echo ""
+echo -e "${YELLOW}Note: CloudFront cache invalidations are in progress.${NC}"
+echo -e "${YELLOW}Changes may take 1-2 minutes to be visible.${NC}"
+echo ""
+

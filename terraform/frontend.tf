@@ -116,7 +116,7 @@ resource "aws_cloudfront_origin_access_control" "frontend" {
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   is_ipv6_enabled     = true
-  default_root_object = "scenario-editor/index.html"
+  default_root_object = "index.html"
   comment             = "${local.service_name} frontend distribution"
 
   aliases = [local.frontend_domain_name]
@@ -150,14 +150,14 @@ resource "aws_cloudfront_distribution" "frontend" {
   custom_error_response {
     error_code         = 403
     response_code      = 200
-    response_page_path = "/scenario-editor/index.html"
+    response_page_path = "/index.html"
     error_caching_min_ttl = 300
   }
   
   custom_error_response {
     error_code         = 404
     response_code      = 200
-    response_page_path = "/scenario-editor/index.html"
+    response_page_path = "/index.html"
     error_caching_min_ttl = 300
   }
 

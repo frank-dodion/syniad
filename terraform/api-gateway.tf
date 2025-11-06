@@ -5,10 +5,10 @@ resource "aws_apigatewayv2_api" "api" {
   description   = "Syniad API"
 
   cors_configuration {
-    # Include frontend domain in allowed origins
+    # Include frontend and editor domains in allowed origins
     allow_origins = concat(
       var.cors_allowed_origins,
-      ["https://${local.frontend_domain_name}", "http://localhost:3000", "http://localhost:8080"]
+      ["https://${local.frontend_domain_name}", "https://${local.editor_domain_name}", "http://localhost:3000", "http://localhost:8080"]
     )
     allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_headers = ["*"]
@@ -321,6 +321,14 @@ resource "aws_apigatewayv2_route" "auth_proxy_callback" {
 resource "aws_apigatewayv2_route" "auth_proxy_logout" {
   api_id    = aws_apigatewayv2_api.api.id
   route_key = "POST /api-proxy/auth/logout"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+# API Gateway Route for Auth Proxy - Me (get current user)
+resource "aws_apigatewayv2_route" "auth_proxy_me" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /api-proxy/auth/me"
   target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
   authorization_type = "NONE"
 }

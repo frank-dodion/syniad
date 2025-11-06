@@ -29,8 +29,8 @@ fi
 cd "$PROJECT_ROOT/terraform"
 
 echo -e "${YELLOW}Getting Terraform outputs...${NC}"
-BUCKET_NAME=$(terraform output -raw frontend_bucket_name 2>/dev/null || echo "")
-DISTRIBUTION_ID=$(terraform output -raw frontend_cloudfront_distribution_id 2>/dev/null || echo "")
+BUCKET_NAME=$(terraform output -raw scenario_editor_bucket_name 2>/dev/null || echo "")
+DISTRIBUTION_ID=$(terraform output -raw scenario_editor_cloudfront_distribution_id 2>/dev/null || echo "")
 
 if [ -z "$BUCKET_NAME" ]; then
     echo -e "${RED}Error: Could not get S3 bucket name from Terraform${NC}"
@@ -92,9 +92,10 @@ if ! grep -q "config.js" "$TEMP_DIR/index.html"; then
     rm "$TEMP_DIR/index.html.bak" 2>/dev/null || true
 fi
 
-# Upload to S3
+# Upload to S3 root (for scenario-editor app)
+# For future game app, use a separate bucket
 echo -e "${YELLOW}Uploading files to S3...${NC}"
-aws s3 sync "$TEMP_DIR" "s3://${BUCKET_NAME}/scenario-editor/" \
+aws s3 sync "$TEMP_DIR" "s3://${BUCKET_NAME}/" \
     --delete \
     --exclude "*.bak" \
     --cache-control "public, max-age=3600" \
@@ -103,7 +104,7 @@ aws s3 sync "$TEMP_DIR" "s3://${BUCKET_NAME}/scenario-editor/" \
     --exclude "*.css"
 
 # Upload HTML, JS, and CSS with shorter cache
-aws s3 sync "$TEMP_DIR" "s3://${BUCKET_NAME}/scenario-editor/" \
+aws s3 sync "$TEMP_DIR" "s3://${BUCKET_NAME}/" \
     --delete \
     --exclude "*" \
     --include "*.html" \
@@ -118,20 +119,26 @@ if [ -n "$DISTRIBUTION_ID" ]; then
     echo -e "${YELLOW}Invalidating CloudFront cache...${NC}"
     INVALIDATION_ID=$(aws cloudfront create-invalidation \
         --distribution-id "$DISTRIBUTION_ID" \
-        --paths "/scenario-editor/*" \
+        --paths "/*" \
         --query 'Invalidation.Id' \
-        --output text)
+        --output text 2>/dev/null || echo "")
     
-    echo -e "${GREEN}✓ CloudFront invalidation created: ${INVALIDATION_ID}${NC}"
-    echo -e "${YELLOW}Note: Cache invalidation may take a few minutes to complete${NC}"
+    if [ -n "$INVALIDATION_ID" ]; then
+        echo -e "${GREEN}✓ CloudFront invalidation created: ${INVALIDATION_ID}${NC}"
+        echo -e "${YELLOW}  Status: In progress (usually completes in 1-2 minutes)${NC}"
+    else
+        echo -e "${YELLOW}⚠ Could not create CloudFront invalidation (may already be in progress)${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠ Skipping CloudFront invalidation (distribution ID not found)${NC}"
 fi
 
-# Get frontend URL
-FRONTEND_URL=$(terraform output -raw frontend_url 2>/dev/null || echo "")
-if [ -n "$FRONTEND_URL" ]; then
+# Get scenario editor URL
+EDITOR_URL=$(terraform output -raw scenario_editor_url 2>/dev/null || echo "")
+if [ -n "$EDITOR_URL" ]; then
     echo ""
     echo -e "${GREEN}=== Deployment Complete ===${NC}"
-    echo -e "${GREEN}Frontend URL: ${FRONTEND_URL}/scenario-editor/${NC}"
+    echo -e "${GREEN}Scenario Editor URL: ${EDITOR_URL}/${NC}"
     echo ""
 else
     echo -e "${GREEN}=== Deployment Complete ===${NC}"

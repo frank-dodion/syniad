@@ -57,7 +57,7 @@ resource "aws_cognito_user_pool_client" "web_client" {
     var.cognito_callback_urls
   )
   logout_urls = concat(
-    ["https://${local.frontend_domain_name}"],
+    ["https://${local.frontend_domain_name}", "https://${local.editor_domain_name}"],
     var.cognito_logout_urls
   )
 

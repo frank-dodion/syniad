@@ -6,8 +6,12 @@ locals {
   api_domain_name = var.stage == "prod" ? "api.${var.domain_name}" : "${var.stage}.api.${var.domain_name}"
   
   # Frontend domain based on stage
-  # Dev: dev.app.syniad.net, Prod: app.syniad.net
-  frontend_domain_name = var.stage == "prod" ? "app.${var.domain_name}" : "${var.stage}.app.${var.domain_name}"
+  # Dev: dev.syniad.net, Prod: syniad.net (or game.syniad.net)
+  frontend_domain_name = var.stage == "prod" ? "${var.domain_name}" : "${var.stage}.${var.domain_name}"
+  
+  # Scenario editor domain
+  # Dev: editor.dev.syniad.net, Prod: editor.syniad.net
+  editor_domain_name = var.stage == "prod" ? "editor.${var.domain_name}" : "editor.${var.stage}.${var.domain_name}"
   
   # Common tags
   common_tags = {

@@ -6,29 +6,34 @@
 const API_BASE_URL = window.API_BASE_URL || 'https://dev.api.syniad.net';
 
 /**
- * Check if user is authenticated by making a test request
+ * Check if user is authenticated by calling the /auth/me endpoint
  * Since tokens are in httpOnly cookies, we can't check directly
  */
 async function isAuthenticated() {
     try {
-        // Make a lightweight request to check auth status
-        const response = await fetch(`${API_BASE_URL}/api-proxy/scenarios?limit=1`, {
+        const response = await fetch(`${API_BASE_URL}/api-proxy/auth/me`, {
             method: 'GET',
             credentials: 'include'
         });
-        return response.status !== 401;
+        return response.ok;
     } catch (e) {
         return false;
     }
 }
 
 /**
- * Get user info - requires an API call since we can't read token from cookie
+ * Get user info from the /auth/me endpoint
  */
 async function getUserInfo() {
     try {
-        // We'll get user info from the API response or make a dedicated endpoint
-        // For now, return null and let the app handle it
+        const response = await fetch(`${API_BASE_URL}/api-proxy/auth/me`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            return data.user || null;
+        }
         return null;
     } catch (e) {
         return null;

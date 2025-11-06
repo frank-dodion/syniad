@@ -8,7 +8,8 @@ const CLIENT_ID = process.env.USER_POOL_CLIENT_ID || '';
 const API_BASE_URL = process.env.API_BASE_URL || '';
 const COGNITO_DOMAIN = process.env.COGNITO_DOMAIN || '';
 const COGNITO_REGION = process.env.COGNITO_REGION || 'us-east-1';
-const FRONTEND_DOMAIN = process.env.FRONTEND_DOMAIN || 'dev.app.syniad.net';
+const FRONTEND_DOMAIN = process.env.FRONTEND_DOMAIN || 'dev.syniad.net';
+const EDITOR_DOMAIN = process.env.EDITOR_DOMAIN || 'editor.dev.syniad.net';
 
 // Cookie names
 const ID_TOKEN_COOKIE = 'id_token';
@@ -154,7 +155,7 @@ function handleLogin(event: APIGatewayProxyEventV2): APIGatewayProxyResultV2 {
   // Get the frontend URL to redirect to after auth (from query param or default)
   const redirectUri = event.queryStringParameters?.redirect_uri;
   const frontendRedirect = redirectUri || 
-    `https://${FRONTEND_DOMAIN}/scenario-editor/`;
+    `https://${EDITOR_DOMAIN}/`;
   
   const cognitoUrl = `https://${COGNITO_DOMAIN}.auth.${COGNITO_REGION}.amazoncognito.com/oauth2/authorize?` +
     `client_id=${CLIENT_ID}&` +
@@ -243,7 +244,7 @@ async function handleCallback(event: APIGatewayProxyEventV2): Promise<APIGateway
     // Set cookies and redirect to frontend app
     const state = event.queryStringParameters?.state;
     const appUrl = state || 
-      `https://${FRONTEND_DOMAIN}/scenario-editor/`;
+      `https://${EDITOR_DOMAIN}/`;
     
     return {
       statusCode: 302,
@@ -280,6 +281,65 @@ function handleLogout(): APIGatewayProxyResultV2 {
       ].join(', ')
     },
     body: JSON.stringify({ message: 'Logged out successfully' })
+  };
+}
+
+/**
+ * Handle /auth/me endpoint - return current user info
+ */
+async function handleMe(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
+  const cookies = parseCookies(event.cookies?.join('; ') || event.headers.cookie || event.headers['cookie']);
+  const idToken = cookies[ID_TOKEN_COOKIE];
+
+  if (!idToken) {
+    return {
+      statusCode: 401,
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': 'true'
+      },
+      body: JSON.stringify({ error: 'Not authenticated' })
+    };
+  }
+
+  // Validate token
+  const isValid = await validateToken(idToken);
+  if (!isValid) {
+    return {
+      statusCode: 401,
+      headers: {
+        'Content-Type': 'application/json',
+        'Set-Cookie': clearCookie(ID_TOKEN_COOKIE),
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': 'true'
+      },
+      body: JSON.stringify({ error: 'Invalid or expired token' })
+    };
+  }
+
+  // Extract user info from token
+  const user = getUserFromToken(idToken);
+  if (!user) {
+    return {
+      statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': 'true'
+      },
+      body: JSON.stringify({ error: 'Failed to extract user info' })
+    };
+  }
+
+  return {
+    statusCode: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Credentials': 'true'
+    },
+    body: JSON.stringify({ user })
   };
 }
 
@@ -428,6 +488,11 @@ export const handler = async (
   if (normalizedPath.includes('/auth/logout')) {
     console.log('Routing to handleLogout, path:', normalizedPath);
     return handleLogout();
+  }
+
+  if (normalizedPath.includes('/auth/me') || normalizedPath.endsWith('/me')) {
+    console.log('Routing to handleMe, path:', normalizedPath);
+    return await handleMe(event);
   }
   
   console.log('Routing to handleProxy, path:', normalizedPath);

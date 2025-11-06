@@ -488,6 +488,7 @@ resource "aws_lambda_function" "auth_proxy" {
       COGNITO_DOMAIN = aws_cognito_user_pool_domain.auth_domain.domain
       COGNITO_REGION = var.aws_region
       FRONTEND_DOMAIN = local.frontend_domain_name
+      EDITOR_DOMAIN = local.editor_domain_name
     }
   }
 
