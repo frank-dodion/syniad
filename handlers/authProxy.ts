@@ -198,14 +198,12 @@ function handleLogin(event: APIGatewayProxyEventV2): APIGatewayProxyResultV2 {
   console.log('handleLogin - Callback URL:', callbackUrl);
   console.log('handleLogin - Frontend redirect:', frontendRedirect);
 
-  const allowedOrigin = getAllowedOrigin(event);
-  
+  // API Gateway HTTP API v2 handles 302 redirects correctly
+  // Return 302 redirect to Cognito
   return {
     statusCode: 302,
     headers: {
-      'Location': cognitoUrl,
-      'Access-Control-Allow-Origin': allowedOrigin,
-      'Access-Control-Allow-Credentials': 'true'
+      'Location': cognitoUrl
     },
     body: ''
   };
@@ -284,24 +282,21 @@ async function handleCallback(event: APIGatewayProxyEventV2): Promise<APIGateway
     const appUrl = state || 
       `https://${EDITOR_DOMAIN}/`;
     
-    const allowedOrigin = getAllowedOrigin(event);
     const cookieStrings = [
       setCookie(ID_TOKEN_COOKIE, idToken, 86400), // 24 hours
       refreshToken ? setCookie(REFRESH_TOKEN_COOKIE, refreshToken, 2592000) : '' // 30 days
     ].filter(Boolean);
     
     console.log('handleCallback - Setting cookies:', cookieStrings.length);
-    console.log('handleCallback - Cookie domain will be:', new URL(API_BASE_URL).hostname.split('.').slice(-2).join('.'));
     console.log('handleCallback - Redirecting to:', appUrl);
     
+    // API Gateway HTTP API v2: Use cookies array property, not Set-Cookie headers
     return {
       statusCode: 302,
       headers: {
-        'Location': appUrl,
-        'Set-Cookie': cookieStrings.join(', '),
-        'Access-Control-Allow-Origin': allowedOrigin,
-        'Access-Control-Allow-Credentials': 'true'
+        'Location': appUrl
       },
+      cookies: cookieStrings, // HTTP API v2 uses cookies array property
       body: ''
     };
   } catch (error) {
@@ -317,16 +312,19 @@ async function handleCallback(event: APIGatewayProxyEventV2): Promise<APIGateway
 /**
  * Handle logout
  */
-function handleLogout(): APIGatewayProxyResultV2 {
+function handleLogout(event: APIGatewayProxyEventV2): APIGatewayProxyResultV2 {
+  const allowedOrigin = getAllowedOrigin(event);
   return {
     statusCode: 200,
     headers: {
       'Content-Type': 'application/json',
-      'Set-Cookie': [
-        clearCookie(ID_TOKEN_COOKIE),
-        clearCookie(REFRESH_TOKEN_COOKIE)
-      ].join(', ')
+      'Access-Control-Allow-Origin': allowedOrigin,
+      'Access-Control-Allow-Credentials': 'true'
     },
+    cookies: [
+      clearCookie(ID_TOKEN_COOKIE),
+      clearCookie(REFRESH_TOKEN_COOKIE)
+    ],
     body: JSON.stringify({ message: 'Logged out successfully' })
   };
 }
@@ -412,10 +410,10 @@ async function handleMe(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyR
       statusCode: 401,
       headers: {
         'Content-Type': 'application/json',
-        'Set-Cookie': clearCookie(ID_TOKEN_COOKIE),
         'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Credentials': 'true'
       },
+      cookies: [clearCookie(ID_TOKEN_COOKIE)],
       body: JSON.stringify({ error: 'Invalid or expired token' })
     };
   }
@@ -473,10 +471,10 @@ async function handleProxy(event: APIGatewayProxyEventV2): Promise<APIGatewayPro
       statusCode: 401,
       headers: {
         'Content-Type': 'application/json',
-        'Set-Cookie': clearCookie(ID_TOKEN_COOKIE),
         'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Credentials': 'true'
       },
+      cookies: [clearCookie(ID_TOKEN_COOKIE)],
       body: JSON.stringify({ error: 'Invalid or expired token' })
     };
   }
@@ -590,10 +588,10 @@ export const handler = async (
     return await handleCallback(event);
   }
 
-  if (normalizedPath.includes('/auth/logout')) {
-    console.log('Routing to handleLogout, path:', normalizedPath);
-    return handleLogout();
-  }
+        if (normalizedPath.includes('/auth/logout')) {
+          console.log('Routing to handleLogout, path:', normalizedPath);
+          return handleLogout(event);
+        }
 
   if (normalizedPath.includes('/auth/me') || normalizedPath.endsWith('/me')) {
     console.log('Routing to handleMe, path:', normalizedPath);
