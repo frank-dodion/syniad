@@ -198,10 +198,14 @@ function handleLogin(event: APIGatewayProxyEventV2): APIGatewayProxyResultV2 {
   console.log('handleLogin - Callback URL:', callbackUrl);
   console.log('handleLogin - Frontend redirect:', frontendRedirect);
 
+  const allowedOrigin = getAllowedOrigin(event);
+  
   return {
     statusCode: 302,
     headers: {
-      'Location': cognitoUrl
+      'Location': cognitoUrl,
+      'Access-Control-Allow-Origin': allowedOrigin,
+      'Access-Control-Allow-Credentials': 'true'
     },
     body: ''
   };
@@ -280,14 +284,23 @@ async function handleCallback(event: APIGatewayProxyEventV2): Promise<APIGateway
     const appUrl = state || 
       `https://${EDITOR_DOMAIN}/`;
     
+    const allowedOrigin = getAllowedOrigin(event);
+    const cookieStrings = [
+      setCookie(ID_TOKEN_COOKIE, idToken, 86400), // 24 hours
+      refreshToken ? setCookie(REFRESH_TOKEN_COOKIE, refreshToken, 2592000) : '' // 30 days
+    ].filter(Boolean);
+    
+    console.log('handleCallback - Setting cookies:', cookieStrings.length);
+    console.log('handleCallback - Cookie domain will be:', new URL(API_BASE_URL).hostname.split('.').slice(-2).join('.'));
+    console.log('handleCallback - Redirecting to:', appUrl);
+    
     return {
       statusCode: 302,
       headers: {
         'Location': appUrl,
-        'Set-Cookie': [
-          setCookie(ID_TOKEN_COOKIE, idToken, 86400), // 24 hours
-          refreshToken ? setCookie(REFRESH_TOKEN_COOKIE, refreshToken, 2592000) : '' // 30 days
-        ].filter(Boolean).join(', ')
+        'Set-Cookie': cookieStrings.join(', '),
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Credentials': 'true'
       },
       body: ''
     };

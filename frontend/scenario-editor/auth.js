@@ -45,7 +45,10 @@ async function getUserInfo() {
  */
 function login() {
     const redirectUri = encodeURIComponent(window.location.href);
-    window.location.href = `${API_BASE_URL}/api-proxy/auth/login?redirect_uri=${redirectUri}`;
+    const loginUrl = `${API_BASE_URL}/api-proxy/auth/login?redirect_uri=${redirectUri}`;
+    console.log('Login - Redirecting to:', loginUrl);
+    // Use window.location.replace to ensure redirect happens
+    window.location.replace(loginUrl);
 }
 
 /**

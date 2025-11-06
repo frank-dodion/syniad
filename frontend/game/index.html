@@ -127,10 +127,17 @@
             
             try {
                 // Check authentication via auth proxy
+                console.log('checkAuth - Making request to:', `${API_BASE}/api-proxy/auth/me`);
+                console.log('checkAuth - Current origin:', window.location.origin);
                 const response = await fetch(`${API_BASE}/api-proxy/auth/me`, {
                     method: 'GET',
-                    credentials: 'include'
+                    credentials: 'include',
+                    headers: {
+                        'Origin': window.location.origin
+                    }
                 });
+                console.log('checkAuth - Response status:', response.status);
+                console.log('checkAuth - Response headers:', Object.fromEntries(response.headers.entries()));
                 
                 if (response.ok) {
                     const data = await response.json();
@@ -166,7 +173,10 @@
         
         function login() {
             const redirectUri = encodeURIComponent(window.location.href);
-            window.location.href = `${API_BASE}/api-proxy/auth/login?redirect_uri=${redirectUri}`;
+            const loginUrl = `${API_BASE}/api-proxy/auth/login?redirect_uri=${redirectUri}`;
+            console.log('Login - Redirecting to:', loginUrl);
+            // Use window.location.replace to ensure redirect happens
+            window.location.replace(loginUrl);
         }
         
         async function logout() {
