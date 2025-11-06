@@ -12,6 +12,7 @@ resource "aws_apigatewayv2_api" "api" {
     )
     allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_headers = ["*"]
+    allow_credentials = true
     max_age       = 300
   }
 

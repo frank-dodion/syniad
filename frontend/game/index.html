@@ -157,6 +157,10 @@
                 logoutBtn.style.display = 'none';
                 loginBtn.style.display = 'inline-block';
                 console.error('Auth check error:', error);
+                // Show more details in console for debugging
+                if (error instanceof Error) {
+                    console.error('Error message:', error.message);
+                }
             }
         }
         

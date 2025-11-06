@@ -48,16 +48,31 @@ function parseCookies(cookieHeader: string | undefined): Record<string, string> 
 
 /**
  * Set httpOnly cookie in response
+ * Domain is set to allow cookies across subdomains (.syniad.net)
+ * SameSite=Lax allows cookies to be sent on top-level navigations (like OAuth redirects)
  */
 function setCookie(name: string, value: string, maxAge: number = 86400): string {
-  return `${name}=${value}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${maxAge}`;
+  // Extract domain from API_BASE_URL (e.g., dev.api.syniad.net -> .syniad.net)
+  const apiUrl = new URL(API_BASE_URL);
+  const hostnameParts = apiUrl.hostname.split('.');
+  // Get root domain (last 2 parts: syniad.net)
+  const rootDomain = hostnameParts.slice(-2).join('.');
+  const cookieDomain = `.${rootDomain}`;
+  
+  return `${name}=${value}; HttpOnly; Secure; SameSite=Lax; Path=/; Domain=${cookieDomain}; Max-Age=${maxAge}`;
 }
 
 /**
  * Clear cookie
  */
 function clearCookie(name: string): string {
-  return `${name}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`;
+  // Extract domain from API_BASE_URL
+  const apiUrl = new URL(API_BASE_URL);
+  const hostnameParts = apiUrl.hostname.split('.');
+  const rootDomain = hostnameParts.slice(-2).join('.');
+  const cookieDomain = `.${rootDomain}`;
+  
+  return `${name}=; HttpOnly; Secure; SameSite=Lax; Path=/; Domain=${cookieDomain}; Max-Age=0`;
 }
 
 /**
@@ -285,18 +300,69 @@ function handleLogout(): APIGatewayProxyResultV2 {
 }
 
 /**
+ * Get allowed origin from request headers
+ */
+function getAllowedOrigin(event: APIGatewayProxyEventV2): string {
+  // Try multiple header formats (API Gateway can use different casing)
+  const origin = event.headers.origin || 
+                 event.headers.Origin || 
+                 event.headers['origin'] ||
+                 event.headers['Origin'] ||
+                 '';
+  
+  const allowedOrigins = [
+    `https://${FRONTEND_DOMAIN}`,
+    `https://${EDITOR_DOMAIN}`,
+    'http://localhost:3000',
+    'http://localhost:8080'
+  ];
+  
+  // Normalize origin (remove trailing slash, lowercase)
+  const normalizedOrigin = origin.toLowerCase().replace(/\/$/, '');
+  const normalizedAllowed = allowedOrigins.map(o => o.toLowerCase().replace(/\/$/, ''));
+  
+  if (normalizedOrigin && normalizedAllowed.includes(normalizedOrigin)) {
+    // Return the original format from allowedOrigins
+    return allowedOrigins[normalizedAllowed.indexOf(normalizedOrigin)];
+  }
+  
+  // If no origin header, check referer as fallback
+  const referer = event.headers.referer || event.headers.Referer || event.headers['referer'] || '';
+  if (referer) {
+    try {
+      const refererUrl = new URL(referer);
+      const refererOrigin = refererUrl.origin;
+      if (normalizedAllowed.includes(refererOrigin.toLowerCase().replace(/\/$/, ''))) {
+        return allowedOrigins[normalizedAllowed.indexOf(refererOrigin.toLowerCase().replace(/\/$/, ''))];
+      }
+    } catch (e) {
+      // Invalid referer URL
+    }
+  }
+  
+  // Log for debugging
+  console.log('getAllowedOrigin - No matching origin found. Origin header:', origin, 'Referer:', referer);
+  
+  // Default to frontend domain if origin not found (more common case)
+  return `https://${FRONTEND_DOMAIN}`;
+}
+
+/**
  * Handle /auth/me endpoint - return current user info
  */
 async function handleMe(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
+  const allowedOrigin = getAllowedOrigin(event);
+  console.log('handleMe - Origin:', event.headers.origin || event.headers.Origin, 'Allowed:', allowedOrigin);
   const cookies = parseCookies(event.cookies?.join('; ') || event.headers.cookie || event.headers['cookie']);
   const idToken = cookies[ID_TOKEN_COOKIE];
+  console.log('handleMe - Has cookie:', !!idToken);
 
   if (!idToken) {
     return {
       statusCode: 401,
       headers: { 
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Credentials': 'true'
       },
       body: JSON.stringify({ error: 'Not authenticated' })
@@ -311,7 +377,7 @@ async function handleMe(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyR
       headers: {
         'Content-Type': 'application/json',
         'Set-Cookie': clearCookie(ID_TOKEN_COOKIE),
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Credentials': 'true'
       },
       body: JSON.stringify({ error: 'Invalid or expired token' })
@@ -325,7 +391,7 @@ async function handleMe(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyR
       statusCode: 500,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Credentials': 'true'
       },
       body: JSON.stringify({ error: 'Failed to extract user info' })
@@ -336,7 +402,7 @@ async function handleMe(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyR
     statusCode: 200,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Credentials': 'true'
     },
     body: JSON.stringify({ user })
@@ -347,6 +413,7 @@ async function handleMe(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyR
  * Handle authenticated API proxy
  */
 async function handleProxy(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
+  const allowedOrigin = getAllowedOrigin(event);
   const cookies = parseCookies(event.cookies?.join('; ') || event.headers.cookie || event.headers['cookie']);
   const idToken = cookies[ID_TOKEN_COOKIE];
 
@@ -355,7 +422,7 @@ async function handleProxy(event: APIGatewayProxyEventV2): Promise<APIGatewayPro
       statusCode: 401,
       headers: { 
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Credentials': 'true'
       },
       body: JSON.stringify({ error: 'Not authenticated' })
@@ -370,7 +437,7 @@ async function handleProxy(event: APIGatewayProxyEventV2): Promise<APIGatewayPro
       headers: {
         'Content-Type': 'application/json',
         'Set-Cookie': clearCookie(ID_TOKEN_COOKIE),
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Credentials': 'true'
       },
       body: JSON.stringify({ error: 'Invalid or expired token' })
@@ -414,7 +481,7 @@ async function handleProxy(event: APIGatewayProxyEventV2): Promise<APIGatewayPro
 
     // Filter out headers that shouldn't be forwarded
     const responseHeaders: Record<string, string> = {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Credentials': 'true'
     };
     
@@ -434,7 +501,7 @@ async function handleProxy(event: APIGatewayProxyEventV2): Promise<APIGatewayPro
       statusCode: 500,
       headers: { 
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Credentials': 'true'
       },
       body: JSON.stringify({ error: 'Failed to proxy request' })
@@ -459,10 +526,11 @@ export const handler = async (
 
   // Handle CORS preflight
   if (method === 'OPTIONS') {
+    const allowedOrigin = getAllowedOrigin(event);
     return {
       statusCode: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Access-Control-Allow-Credentials': 'true'
