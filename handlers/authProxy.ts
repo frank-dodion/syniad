@@ -319,7 +319,7 @@ async function handleProxy(event: APIGatewayProxyEventV2): Promise<APIGatewayPro
 
   // Extract API path from request
   // Path format: /api-proxy/scenarios -> /scenarios
-  const requestPath = event.requestContext.http.path;
+  const requestPath = (event.requestContext as any).http.path;
   let apiPath = requestPath.replace('/api-proxy', '') || '/';
   
   // Handle path parameters - replace {param} with actual values
@@ -340,7 +340,7 @@ async function handleProxy(event: APIGatewayProxyEventV2): Promise<APIGatewayPro
   // Proxy request to backend API
   try {
     const response = await proxyRequest(
-      event.requestContext.http.method,
+      (event.requestContext as any).http.method,
       apiPath,
       {
         'Authorization': `Bearer ${idToken}`,
@@ -385,8 +385,8 @@ async function handleProxy(event: APIGatewayProxyEventV2): Promise<APIGatewayPro
 export const handler = async (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> => {
-  const path = event.requestContext.http.path;
-  const method = event.requestContext.http.method;
+  const path = (event.requestContext as any).http.path;
+  const method = (event.requestContext as any).http.method;
 
   // Handle CORS preflight
   if (method === 'OPTIONS') {
