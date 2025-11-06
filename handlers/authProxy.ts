@@ -389,8 +389,13 @@ export const handler = async (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> => {
   const requestContext = event.requestContext as any;
-  const path = requestContext?.http?.path || event.rawPath || '/';
+  const path = requestContext?.http?.path || event.rawPath || (event as any).path || '/';
   const method = requestContext?.http?.method || event.requestContext?.http?.method || 'GET';
+
+  // Debug logging
+  console.log('Auth proxy handler - path:', path, 'method:', method);
+  console.log('Event keys:', Object.keys(event));
+  console.log('RequestContext:', JSON.stringify(requestContext, null, 2));
 
   // Handle CORS preflight
   if (method === 'OPTIONS') {
@@ -406,18 +411,26 @@ export const handler = async (
     };
   }
 
-  // Route to appropriate handler
-  if (path === '/api-proxy/auth/login' || path === '/auth/login') {
+  // Route to appropriate handler - check path with or without /api-proxy prefix
+  // Normalize path for matching
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  
+  if (normalizedPath.includes('/auth/login') || normalizedPath.endsWith('/login')) {
+    console.log('Routing to handleLogin, path:', normalizedPath);
     return handleLogin(event);
   }
 
-  if (path === '/api-proxy/auth/callback' || path === '/auth/callback') {
+  if (normalizedPath.includes('/auth/callback')) {
+    console.log('Routing to handleCallback, path:', normalizedPath);
     return await handleCallback(event);
   }
 
-  if (path === '/api-proxy/auth/logout' || path === '/auth/logout') {
+  if (normalizedPath.includes('/auth/logout')) {
+    console.log('Routing to handleLogout, path:', normalizedPath);
     return handleLogout();
   }
+  
+  console.log('Routing to handleProxy, path:', normalizedPath);
 
   // All other paths are API proxy requests
   return await handleProxy(event);
