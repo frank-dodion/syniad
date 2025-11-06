@@ -54,3 +54,18 @@ output "cognito_region" {
   value       = var.aws_region
 }
 
+output "frontend_url" {
+  description = "Frontend application URL"
+  value       = "https://${local.frontend_domain_name}"
+}
+
+output "frontend_bucket_name" {
+  description = "S3 bucket name for frontend"
+  value       = aws_s3_bucket.frontend.id
+}
+
+output "frontend_cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for frontend"
+  value       = aws_cloudfront_distribution.frontend.id
+}
+

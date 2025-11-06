@@ -5,7 +5,11 @@ resource "aws_apigatewayv2_api" "api" {
   description   = "Syniad API"
 
   cors_configuration {
-    allow_origins = var.cors_allowed_origins
+    # Include frontend domain in allowed origins
+    allow_origins = concat(
+      var.cors_allowed_origins,
+      ["https://${local.frontend_domain_name}", "http://localhost:3000", "http://localhost:8080"]
+    )
     allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_headers = ["*"]
     max_age       = 300
@@ -91,6 +95,14 @@ resource "aws_apigatewayv2_integration" "docs" {
   api_id           = aws_apigatewayv2_api.api.id
   integration_type = "AWS_PROXY"
   integration_uri  = aws_lambda_function.docs.invoke_arn
+  integration_method = "POST"
+}
+
+# API Gateway Integration for Auth Proxy
+resource "aws_apigatewayv2_integration" "auth_proxy" {
+  api_id           = aws_apigatewayv2_api.api.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.auth_proxy.invoke_arn
   integration_method = "POST"
 }
 
@@ -289,6 +301,124 @@ resource "aws_apigatewayv2_route" "docs_openapi" {
   authorization_type = "NONE"
 }
 
+# API Gateway Route for Auth Proxy - Login
+resource "aws_apigatewayv2_route" "auth_proxy_login" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /api-proxy/auth/login"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+# API Gateway Route for Auth Proxy - Callback
+resource "aws_apigatewayv2_route" "auth_proxy_callback" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /api-proxy/auth/callback"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+# API Gateway Route for Auth Proxy - Logout
+resource "aws_apigatewayv2_route" "auth_proxy_logout" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "POST /api-proxy/auth/logout"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+# API Gateway Route for Auth Proxy - Catch-all for API requests
+# Note: API Gateway HTTP API doesn't support true wildcards, so we'll add common routes
+# For other routes, we can add them as needed or use a $default route
+resource "aws_apigatewayv2_route" "auth_proxy_scenarios" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /api-proxy/scenarios"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "auth_proxy_scenarios_post" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "POST /api-proxy/scenarios"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "auth_proxy_scenario_get" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /api-proxy/scenarios/{scenarioId}"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "auth_proxy_scenario_put" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "PUT /api-proxy/scenarios/{scenarioId}"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "auth_proxy_scenario_delete" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "DELETE /api-proxy/scenarios/{scenarioId}"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "auth_proxy_games" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /api-proxy/games"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "auth_proxy_games_post" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "POST /api-proxy/games"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "auth_proxy_game_get" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /api-proxy/games/{gameId}"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "auth_proxy_game_join" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "POST /api-proxy/games/{gameId}/join"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "auth_proxy_game_delete" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "DELETE /api-proxy/games/{gameId}"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "auth_proxy_my_games" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /api-proxy/games/my"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "auth_proxy_my_games_player1" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /api-proxy/games/my/player1"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_route" "auth_proxy_my_games_player2" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "GET /api-proxy/games/my/player2"
+  target    = "integrations/${aws_apigatewayv2_integration.auth_proxy.id}"
+  authorization_type = "NONE"
+}
+
 # API Gateway Stage
 # auto_deploy = true ensures changes are automatically deployed when routes/integrations change
 resource "aws_apigatewayv2_stage" "default" {
@@ -322,6 +452,22 @@ resource "aws_apigatewayv2_stage" "default" {
     aws_apigatewayv2_route.get_games_by_player2,
     aws_apigatewayv2_route.docs,
     aws_apigatewayv2_route.docs_openapi,
+    aws_apigatewayv2_route.auth_proxy_login,
+    aws_apigatewayv2_route.auth_proxy_callback,
+    aws_apigatewayv2_route.auth_proxy_logout,
+    aws_apigatewayv2_route.auth_proxy_scenarios,
+    aws_apigatewayv2_route.auth_proxy_scenarios_post,
+    aws_apigatewayv2_route.auth_proxy_scenario_get,
+    aws_apigatewayv2_route.auth_proxy_scenario_put,
+    aws_apigatewayv2_route.auth_proxy_scenario_delete,
+    aws_apigatewayv2_route.auth_proxy_games,
+    aws_apigatewayv2_route.auth_proxy_games_post,
+    aws_apigatewayv2_route.auth_proxy_game_get,
+    aws_apigatewayv2_route.auth_proxy_game_join,
+    aws_apigatewayv2_route.auth_proxy_game_delete,
+    aws_apigatewayv2_route.auth_proxy_my_games,
+    aws_apigatewayv2_route.auth_proxy_my_games_player1,
+    aws_apigatewayv2_route.auth_proxy_my_games_player2,
     aws_apigatewayv2_authorizer.api_authorizer
   ]
 
@@ -413,6 +559,14 @@ resource "aws_lambda_permission" "docs_api_gw" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.docs.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "auth_proxy_api_gw" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.auth_proxy.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
 }

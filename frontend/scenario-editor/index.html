@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scenario Editor - Syniad</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Scenario Editor</h1>
+        <div class="auth-status">
+            <span id="auth-status-text">Not logged in</span>
+            <button id="login-btn" class="btn btn-primary">Login</button>
+            <button id="logout-btn" class="btn btn-secondary" style="display: none;">Logout</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Left Sidebar -->
+        <aside class="sidebar">
+            <section class="scenario-list-section">
+                <h2>Scenarios</h2>
+                <button id="refresh-scenarios-btn" class="btn btn-small">Refresh</button>
+                <div id="scenario-list" class="scenario-list">
+                    <p class="loading">Loading scenarios...</p>
+                </div>
+            </section>
+
+            <section class="scenario-form-section">
+                <h2 id="form-title">Create New Scenario</h2>
+                <form id="scenario-form">
+                    <div class="form-group">
+                        <label for="scenario-title">Title</label>
+                        <input type="text" id="scenario-title" name="title" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scenario-description">Description</label>
+                        <textarea id="scenario-description" name="description" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="scenario-columns">Columns</label>
+                            <input type="number" id="scenario-columns" name="columns" min="1" value="12" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="scenario-rows">Rows</label>
+                            <input type="number" id="scenario-rows" name="rows" min="1" value="10" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="scenario-turns">Turns</label>
+                            <input type="number" id="scenario-turns" name="turns" min="1" value="15" required>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" id="create-scenario-btn" class="btn btn-primary">Create New</button>
+                        <button type="button" id="save-scenario-btn" class="btn btn-success" style="display: none;">Save Changes</button>
+                        <button type="button" id="delete-scenario-btn" class="btn btn-danger" style="display: none;">Delete</button>
+                        <button type="button" id="cancel-edit-btn" class="btn btn-secondary" style="display: none;">Cancel</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="terrain-selector-section">
+                <h2>Terrain Type</h2>
+                <div id="terrain-selector" class="terrain-selector">
+                    <button class="terrain-btn" data-terrain="clear" title="Clear">Clear</button>
+                    <button class="terrain-btn" data-terrain="mountain" title="Mountain">Mountain</button>
+                    <button class="terrain-btn" data-terrain="forest" title="Forest">Forest</button>
+                    <button class="terrain-btn" data-terrain="water" title="Water">Water</button>
+                    <button class="terrain-btn" data-terrain="desert" title="Desert">Desert</button>
+                    <button class="terrain-btn" data-terrain="swamp" title="Swamp">Swamp</button>
+                </div>
+                <p class="selected-terrain">Selected: <span id="selected-terrain-text">clear</span></p>
+            </section>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <div id="hex-grid-container" class="hex-grid-container">
+                <p class="info-message">Create or load a scenario to start editing</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <!-- Error/Success Messages -->
+    <div id="message-container" class="message-container"></div>
+
+    <script src="auth.js"></script>
+    <script src="api.js"></script>
+    <script src="hex-grid.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+

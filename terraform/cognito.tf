@@ -51,9 +51,15 @@ resource "aws_cognito_user_pool_client" "web_client" {
     "ALLOW_USER_SRP_AUTH"
   ]
 
-  # Callback URLs (should be configured per environment)
-  callback_urls = var.cognito_callback_urls
-  logout_urls   = var.cognito_logout_urls
+  # Callback URLs - include auth proxy callback + any custom URLs
+  callback_urls = concat(
+    ["https://${local.api_domain_name}/api-proxy/auth/callback"],
+    var.cognito_callback_urls
+  )
+  logout_urls = concat(
+    ["https://${local.frontend_domain_name}"],
+    var.cognito_logout_urls
+  )
 
   supported_identity_providers = ["COGNITO"]
 

@@ -9,7 +9,7 @@ echo "Building TypeScript..."
 npm run build
 
 # Lambda names
-LAMBDAS=("test" "createScenario" "getScenarios" "updateScenario" "deleteScenario" "createGame" "joinGame" "getGame" "deleteGame" "getAllGames" "authorizer" "docs")
+LAMBDAS=("test" "createScenario" "getScenarios" "updateScenario" "deleteScenario" "createGame" "joinGame" "getGame" "deleteGame" "getAllGames" "authorizer" "authProxy" "docs")
 
 # Create Lambda package directories
 echo "Preparing Lambda packages..."
@@ -25,6 +25,7 @@ mkdir -p .build/lambda-packages/deleteGame
 mkdir -p .build/lambda-packages/getAllGames
 mkdir -p .build/lambda-packages/authorizer
 mkdir -p .build/lambda-packages/docs
+mkdir -p .build/lambda-packages/authProxy
 
 # Function to build a specific lambda
 build_lambda() {
@@ -44,6 +45,7 @@ build_lambda() {
     "deleteGame") handler_name="deleteGame" ;;
     "getAllGames") handler_name="getAllGames" ;;
     "authorizer") handler_name="authorizer" ;;
+    "authProxy") handler_name="authProxy" ;;
     "test") handler_name="test" ;;
     "docs") handler_name="docs" ;;
     *) handler_name="$lambda_name" ;;
