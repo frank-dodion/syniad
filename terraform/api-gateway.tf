@@ -106,14 +106,6 @@ resource "aws_apigatewayv2_integration" "auth_proxy" {
   integration_method = "POST"
 }
 
-# API Gateway Integration for Frontend
-resource "aws_apigatewayv2_integration" "frontend" {
-  api_id           = aws_apigatewayv2_api.api.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.frontend.invoke_arn
-  integration_method = "POST"
-}
-
 
 # API Gateway Authorizer
 resource "aws_apigatewayv2_authorizer" "api_authorizer" {
@@ -427,35 +419,6 @@ resource "aws_apigatewayv2_route" "auth_proxy_my_games_player2" {
   authorization_type = "NONE"
 }
 
-# API Gateway Routes for Frontend
-resource "aws_apigatewayv2_route" "frontend_root" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "GET /"
-  target    = "integrations/${aws_apigatewayv2_integration.frontend.id}"
-  authorization_type = "NONE"
-}
-
-resource "aws_apigatewayv2_route" "frontend_scenario_editor" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "GET /scenario-editor"
-  target    = "integrations/${aws_apigatewayv2_integration.frontend.id}"
-  authorization_type = "NONE"
-}
-
-resource "aws_apigatewayv2_route" "frontend_scenario_editor_slash" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "GET /scenario-editor/"
-  target    = "integrations/${aws_apigatewayv2_integration.frontend.id}"
-  authorization_type = "NONE"
-}
-
-resource "aws_apigatewayv2_route" "frontend_scenario_editor_catchall" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "GET /scenario-editor/{proxy+}"
-  target    = "integrations/${aws_apigatewayv2_integration.frontend.id}"
-  authorization_type = "NONE"
-}
-
 # API Gateway Stage
 # auto_deploy = true ensures changes are automatically deployed when routes/integrations change
 resource "aws_apigatewayv2_stage" "default" {
@@ -505,10 +468,6 @@ resource "aws_apigatewayv2_stage" "default" {
     aws_apigatewayv2_route.auth_proxy_my_games,
     aws_apigatewayv2_route.auth_proxy_my_games_player1,
     aws_apigatewayv2_route.auth_proxy_my_games_player2,
-    aws_apigatewayv2_route.frontend_root,
-    aws_apigatewayv2_route.frontend_scenario_editor,
-    aws_apigatewayv2_route.frontend_scenario_editor_slash,
-    aws_apigatewayv2_route.frontend_scenario_editor_catchall,
     aws_apigatewayv2_authorizer.api_authorizer
   ]
 
@@ -608,14 +567,6 @@ resource "aws_lambda_permission" "auth_proxy_api_gw" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.auth_proxy.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
-}
-
-resource "aws_lambda_permission" "frontend_api_gw" {
-  statement_id  = "AllowExecutionFromAPIGateway"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.frontend.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
 }

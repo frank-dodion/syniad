@@ -193,16 +193,6 @@ data "archive_file" "auth_proxy_lambda" {
   excludes = ["node_modules/.cache"]
 }
 
-data "archive_file" "frontend_lambda" {
-  type        = "zip"
-  source_dir  = "${path.module}/../.build/lambda-packages/frontend"
-  output_path = "${path.module}/lambda-zips/frontend.zip"
-  
-  depends_on = [null_resource.build_lambda]
-  
-  excludes = ["node_modules/.cache"]
-}
-
 # Build step - triggers when source files change
 # This builds ALL Lambda functions when any source code or configuration changes.
 # To force a rebuild of all lambdas, you can:
@@ -500,20 +490,6 @@ resource "aws_lambda_function" "auth_proxy" {
       FRONTEND_DOMAIN = local.frontend_domain_name
     }
   }
-
-  tags = local.common_tags
-}
-
-# Frontend Lambda function
-resource "aws_lambda_function" "frontend" {
-  filename         = data.archive_file.frontend_lambda.output_path
-  function_name    = "${local.service_name}-frontend"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "index.handler"
-  runtime         = "nodejs20.x"
-  timeout         = 10
-  memory_size     = 256
-  source_code_hash = data.archive_file.frontend_lambda.output_base64sha256
 
   tags = local.common_tags
 }

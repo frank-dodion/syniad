@@ -9,7 +9,7 @@ echo "Building TypeScript..."
 npm run build
 
 # Lambda names
-LAMBDAS=("test" "createScenario" "getScenarios" "updateScenario" "deleteScenario" "createGame" "joinGame" "getGame" "deleteGame" "getAllGames" "authorizer" "authProxy" "frontend" "docs")
+LAMBDAS=("test" "createScenario" "getScenarios" "updateScenario" "deleteScenario" "createGame" "joinGame" "getGame" "deleteGame" "getAllGames" "authorizer" "authProxy" "docs")
 
 # Create Lambda package directories
 echo "Preparing Lambda packages..."
@@ -26,7 +26,6 @@ mkdir -p .build/lambda-packages/getAllGames
 mkdir -p .build/lambda-packages/authorizer
 mkdir -p .build/lambda-packages/docs
 mkdir -p .build/lambda-packages/authProxy
-mkdir -p .build/lambda-packages/frontend
 
 # Function to build a specific lambda
 build_lambda() {
@@ -47,7 +46,6 @@ build_lambda() {
     "getAllGames") handler_name="getAllGames" ;;
     "authorizer") handler_name="authorizer" ;;
     "authProxy") handler_name="authProxy" ;;
-    "frontend") handler_name="frontend" ;;
     "test") handler_name="test" ;;
     "docs") handler_name="docs" ;;
     *) handler_name="$lambda_name" ;;
@@ -67,12 +65,6 @@ build_lambda() {
   if [ "$lambda_name" = "docs" ]; then
     mkdir -p ".build/lambda-packages/${lambda_name}/docs"
     cp docs/openapi.yaml ".build/lambda-packages/${lambda_name}/docs/openapi.yaml" 2>/dev/null || true
-  fi
-  
-  # Copy frontend files for frontend handler
-  if [ "$lambda_name" = "frontend" ]; then
-    mkdir -p ".build/lambda-packages/${lambda_name}/frontend"
-    cp -r frontend/scenario-editor/* ".build/lambda-packages/${lambda_name}/frontend/scenario-editor/" 2>/dev/null || true
   fi
   
   # Fix import paths in lib files too (they might import from shared)
