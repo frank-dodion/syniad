@@ -31,9 +31,24 @@ function getVerifier() {
 
 /**
  * Parse cookies from request
+ * API Gateway HTTP API v2 provides cookies as an array in event.cookies
+ * Also supports legacy cookie header format
  */
-function parseCookies(cookieHeader: string | undefined): Record<string, string> {
+function parseCookies(cookieHeader: string | string[] | undefined): Record<string, string> {
   const cookies: Record<string, string> = {};
+  
+  // Handle array format (API Gateway HTTP API v2)
+  if (Array.isArray(cookieHeader)) {
+    cookieHeader.forEach(cookie => {
+      const [name, value] = cookie.split('=');
+      if (name && value) {
+        cookies[name.trim()] = decodeURIComponent(value);
+      }
+    });
+    return cookies;
+  }
+  
+  // Handle string format (legacy or manual parsing)
   if (!cookieHeader) return cookies;
   
   cookieHeader.split(';').forEach(cookie => {
@@ -178,6 +193,10 @@ function handleLogin(event: APIGatewayProxyEventV2): APIGatewayProxyResultV2 {
     `redirect_uri=${encodeURIComponent(callbackUrl)}&` +
     `state=${encodeURIComponent(frontendRedirect)}&` +
     `scope=email+openid+profile`;
+
+  console.log('handleLogin - Redirecting to Cognito:', cognitoUrl);
+  console.log('handleLogin - Callback URL:', callbackUrl);
+  console.log('handleLogin - Frontend redirect:', frontendRedirect);
 
   return {
     statusCode: 302,
@@ -353,9 +372,13 @@ function getAllowedOrigin(event: APIGatewayProxyEventV2): string {
 async function handleMe(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
   const allowedOrigin = getAllowedOrigin(event);
   console.log('handleMe - Origin:', event.headers.origin || event.headers.Origin, 'Allowed:', allowedOrigin);
-  const cookies = parseCookies(event.cookies?.join('; ') || event.headers.cookie || event.headers['cookie']);
+  console.log('handleMe - Cookies array:', event.cookies);
+  console.log('handleMe - Cookie header:', event.headers.cookie || event.headers['cookie']);
+  // API Gateway HTTP API v2 provides cookies as an array
+  const cookies = parseCookies(event.cookies || event.headers.cookie || event.headers['cookie']);
   const idToken = cookies[ID_TOKEN_COOKIE];
-  console.log('handleMe - Has cookie:', !!idToken);
+  console.log('handleMe - Parsed cookies:', Object.keys(cookies));
+  console.log('handleMe - Has id_token cookie:', !!idToken);
 
   if (!idToken) {
     return {
@@ -414,7 +437,8 @@ async function handleMe(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyR
  */
 async function handleProxy(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
   const allowedOrigin = getAllowedOrigin(event);
-  const cookies = parseCookies(event.cookies?.join('; ') || event.headers.cookie || event.headers['cookie']);
+  // API Gateway HTTP API v2 provides cookies as an array
+  const cookies = parseCookies(event.cookies || event.headers.cookie || event.headers['cookie']);
   const idToken = cookies[ID_TOKEN_COOKIE];
 
   if (!idToken) {
