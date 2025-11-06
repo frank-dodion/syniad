@@ -1,4 +1,4 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
 import https from 'https';
 import { URL } from 'url';
@@ -146,13 +146,14 @@ function proxyRequest(
 /**
  * Handle login - redirect to Cognito hosted UI
  */
-function handleLogin(event: APIGatewayProxyEvent): APIGatewayProxyResult {
+function handleLogin(event: APIGatewayProxyEventV2): APIGatewayProxyResultV2 {
   // The callback URL is the auth proxy callback endpoint on the API domain
   const apiDomain = API_BASE_URL.replace('https://', '').replace('http://', '');
   const callbackUrl = `${API_BASE_URL}/api-proxy/auth/callback`;
   
   // Get the frontend URL to redirect to after auth (from query param or default)
-  const frontendRedirect = event.queryStringParameters?.redirect_uri || 
+  const redirectUri = event.queryStringParameters?.redirect_uri;
+  const frontendRedirect = redirectUri || 
     `https://${FRONTEND_DOMAIN}/scenario-editor/`;
   
   const cognitoUrl = `https://${COGNITO_DOMAIN}.auth.${COGNITO_REGION}.amazoncognito.com/oauth2/authorize?` +
@@ -174,8 +175,8 @@ function handleLogin(event: APIGatewayProxyEvent): APIGatewayProxyResult {
 /**
  * Handle OAuth callback - exchange code for tokens
  */
-async function handleCallback(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
-  const code = event.queryStringParameters?.code;
+async function handleCallback(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
+  const code = event.queryStringParameters?.code || (event.rawQueryString ? new URLSearchParams(event.rawQueryString).get('code') : null);
   if (!code) {
     return {
       statusCode: 400,
@@ -240,7 +241,8 @@ async function handleCallback(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const refreshToken = tokens.refresh_token;
 
     // Set cookies and redirect to frontend app
-    const appUrl = event.queryStringParameters?.state || 
+    const state = event.queryStringParameters?.state;
+    const appUrl = state || 
       `https://${FRONTEND_DOMAIN}/scenario-editor/`;
     
     return {
@@ -267,7 +269,7 @@ async function handleCallback(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 /**
  * Handle logout
  */
-function handleLogout(): APIGatewayProxyResult {
+function handleLogout(): APIGatewayProxyResultV2 {
   return {
     statusCode: 200,
     headers: {
@@ -284,8 +286,8 @@ function handleLogout(): APIGatewayProxyResult {
 /**
  * Handle authenticated API proxy
  */
-async function handleProxy(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
-  const cookies = parseCookies(event.headers.cookie || event.headers.Cookie);
+async function handleProxy(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
+  const cookies = parseCookies(event.cookies?.join('; ') || event.headers.cookie || event.headers['cookie']);
   const idToken = cookies[ID_TOKEN_COOKIE];
 
   if (!idToken) {
@@ -317,7 +319,7 @@ async function handleProxy(event: APIGatewayProxyEvent): Promise<APIGatewayProxy
 
   // Extract API path from request
   // Path format: /api-proxy/scenarios -> /scenarios
-  const requestPath = event.requestContext.path;
+  const requestPath = event.requestContext.http.path;
   let apiPath = requestPath.replace('/api-proxy', '') || '/';
   
   // Handle path parameters - replace {param} with actual values
@@ -381,9 +383,9 @@ async function handleProxy(event: APIGatewayProxyEvent): Promise<APIGatewayProxy
  * Main handler
  */
 export const handler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
-  const path = event.requestContext.path;
+  event: APIGatewayProxyEventV2
+): Promise<APIGatewayProxyResultV2> => {
+  const path = event.requestContext.http.path;
   const method = event.requestContext.http.method;
 
   // Handle CORS preflight
