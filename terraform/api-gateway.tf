@@ -6,10 +6,11 @@ resource "aws_apigatewayv2_api" "api" {
 
   cors_configuration {
     # Include frontend and editor domains in allowed origins
-    allow_origins = concat(
-      var.cors_allowed_origins,
+    # Filter out "*" when allow_credentials is true (API Gateway doesn't allow both)
+    allow_origins = distinct(concat(
+      [for origin in var.cors_allowed_origins : origin if origin != "*"],
       ["https://${local.frontend_domain_name}", "https://${local.editor_domain_name}", "http://localhost:3000", "http://localhost:8080"]
-    )
+    ))
     allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_headers = ["*"]
     allow_credentials = true
