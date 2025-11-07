@@ -3,7 +3,17 @@
  * Works both client-side and server-side
  */
 
+import { createAuthClient } from "better-auth/react";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dev.api.syniad.net';
+
+// Better Auth client for getting session tokens
+const authClient = typeof window !== 'undefined' 
+  ? createAuthClient({
+      baseURL: window.location.origin,
+      basePath: '/api/auth',
+    })
+  : null;
 
 export interface Scenario {
   scenarioId: string;
@@ -33,34 +43,31 @@ export interface ScenariosResponse {
  */
 async function getAccessToken(): Promise<string | null> {
   try {
-    // Use Better Auth's built-in session endpoint (handled by [...all] route)
-    // Note: This is for API token extraction, not for UI auth state
-    const response = await fetch('/api/auth/session', {
-      credentials: 'include',
-      cache: 'no-store',
-    });
-    if (response.ok) {
-      const data = await response.json();
-      // Better Auth returns { data: { session, user }, error: null }
-      const sessionData = data?.data || data;
-      // The Cognito ID token is stored in session.idToken (from callbacks)
-      // The API authorizer expects the ID token
-      const idToken = sessionData?.session?.idToken || sessionData?.idToken || null;
-      
-      if (!idToken) {
-        console.warn('[API Client] No ID token found in session. Session data:', {
-          hasSession: !!sessionData?.session,
-          hasData: !!sessionData,
-          sessionKeys: sessionData?.session ? Object.keys(sessionData.session) : [],
-          dataKeys: sessionData ? Object.keys(sessionData) : [],
-        });
-      }
-      
-      return idToken;
-    } else {
-      console.error('[API Client] Failed to get session:', response.status, response.statusText);
+    // Use Better Auth client's getSession() method (works client-side only)
+    if (!authClient || typeof window === 'undefined') {
       return null;
     }
+    
+    const sessionResponse = await authClient.getSession();
+    // Better Auth returns { data: { session, user }, error: null }
+    const sessionData = (sessionResponse && typeof sessionResponse === 'object' && 'data' in sessionResponse)
+      ? (sessionResponse as any).data
+      : (sessionResponse as any);
+    
+    // The Cognito ID token is stored in session.idToken (from callbacks)
+    // The API authorizer expects the ID token
+    const idToken = sessionData?.session?.idToken || sessionData?.idToken || null;
+    
+    if (!idToken) {
+      console.warn('[API Client] No ID token found in session. Session data:', {
+        hasSession: !!sessionData?.session,
+        hasData: !!sessionData,
+        sessionKeys: sessionData?.session ? Object.keys(sessionData.session) : [],
+        dataKeys: sessionData ? Object.keys(sessionData) : [],
+      });
+    }
+    
+    return idToken;
   } catch (e) {
     console.error('[API Client] Error getting access token:', e);
     return null;

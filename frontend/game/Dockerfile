@@ -51,17 +51,10 @@ RUN adduser --system --uid 1001 nextjs
 
 # Install Lambda Web Adapter for Function URL support
 # Lambda Function URLs use the Lambda Runtime API, which requires the adapter to translate to HTTP
-RUN apk add --no-cache curl && \
-    ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
-        ADAPTER_ARCH="x86_64"; \
-    elif [ "$ARCH" = "aarch64" ]; then \
-        ADAPTER_ARCH="arm64"; \
-    else \
-        echo "Unsupported architecture: $ARCH" && exit 1; \
-    fi && \
-    curl -L "https://github.com/awslabs/aws-lambda-web-adapter/releases/latest/download/aws-lambda-web-adapter-${ADAPTER_ARCH}" -o /usr/local/bin/aws-lambda-web-adapter && \
-    chmod +x /usr/local/bin/aws-lambda-web-adapter
+# Copy the adapter from the official public ECR image
+RUN mkdir -p /opt/extensions
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.6.0 /lambda-adapter /opt/extensions/lambda-adapter
+RUN chmod +x /opt/extensions/lambda-adapter
 
 # Lambda requires files in /var/task
 # Lambda Function URLs require Lambda Web Adapter (installed above) to translate
@@ -85,7 +78,7 @@ ENV HOSTNAME="0.0.0.0"
 # Run as nextjs user for security (files are readable by Lambda's user via chmod)
 USER nextjs
 
-# Use Lambda Web Adapter as entrypoint, which will start the Next.js server
-# The adapter listens on the Lambda Runtime API and proxies to our server on PORT 8080
-ENTRYPOINT ["/usr/local/bin/aws-lambda-web-adapter"]
+# Lambda Web Adapter runs as an extension (from /opt/extensions/)
+# The adapter automatically detects and starts the server on PORT 8080
+# No need for explicit entrypoint - Lambda will use the extension
 CMD ["node", "server.js"]
