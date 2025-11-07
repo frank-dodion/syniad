@@ -6,11 +6,11 @@ import { Scenario, Hex } from '../../../../../../shared/types';
 // GET /api/scenarios/[scenarioId] - Get a specific scenario
 export async function GET(
   request: NextRequest,
-  { params }: { params: { scenarioId: string } }
+  { params }: { params: Promise<{ scenarioId: string }> }
 ) {
   try {
     const user = await extractUserIdentity(request);
-    const scenarioId = params.scenarioId;
+    const { scenarioId } = await params;
     
     if (!scenarioId) {
       return createApiResponse(400, {
@@ -42,7 +42,7 @@ export async function GET(
 // PUT /api/scenarios/[scenarioId] - Update a scenario
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { scenarioId: string } }
+  { params }: { params: Promise<{ scenarioId: string }> }
 ) {
   try {
     const user = await extractUserIdentity(request);
@@ -53,7 +53,7 @@ export async function PUT(
       });
     }
     
-    const scenarioId = params.scenarioId;
+    const { scenarioId } = await params;
     
     if (!scenarioId) {
       return createApiResponse(400, {
@@ -121,7 +121,7 @@ export async function PUT(
 // DELETE /api/scenarios/[scenarioId] - Delete a scenario
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { scenarioId: string } }
+  { params }: { params: Promise<{ scenarioId: string }> }
 ) {
   try {
     const user = await extractUserIdentity(request);
@@ -132,7 +132,7 @@ export async function DELETE(
       });
     }
     
-    const scenarioId = params.scenarioId;
+    const { scenarioId } = await params;
     
     if (!scenarioId) {
       return createApiResponse(400, {

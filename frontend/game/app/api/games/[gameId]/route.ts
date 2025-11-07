@@ -5,11 +5,11 @@ import { getGame, deleteGame } from '@/lib/api-db';
 // GET /api/games/[gameId] - Get a specific game
 export async function GET(
   request: NextRequest,
-  { params }: { params: { gameId: string } }
+  { params }: { params: Promise<{ gameId: string }> }
 ) {
   try {
     const user = await extractUserIdentity(request);
-    const gameId = params.gameId;
+    const { gameId } = await params;
     
     if (!gameId) {
       return createApiResponse(400, {
@@ -40,7 +40,7 @@ export async function GET(
 // DELETE /api/games/[gameId] - Delete a game
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { gameId: string } }
+  { params }: { params: Promise<{ gameId: string }> }
 ) {
   try {
     const user = await extractUserIdentity(request);
@@ -51,7 +51,7 @@ export async function DELETE(
       });
     }
     
-    const gameId = params.gameId;
+    const { gameId } = await params;
     
     if (!gameId) {
       return createApiResponse(400, {

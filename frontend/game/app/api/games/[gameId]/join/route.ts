@@ -6,7 +6,7 @@ import { Game } from '../../../../../../shared/types';
 // POST /api/games/[gameId]/join - Join a game as player2
 export async function POST(
   request: NextRequest,
-  { params }: { params: { gameId: string } }
+  { params }: { params: Promise<{ gameId: string }> }
 ) {
   try {
     const user = await extractUserIdentity(request);
@@ -18,7 +18,7 @@ export async function POST(
       });
     }
 
-    const gameId = params.gameId;
+    const { gameId } = await params;
     
     if (!gameId) {
       return createApiResponse(400, {
