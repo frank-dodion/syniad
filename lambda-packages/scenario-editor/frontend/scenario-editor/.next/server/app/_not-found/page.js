@@ -1,0 +1,13 @@
+var R=require("../../chunks/ssr/[turbopack]_runtime.js")("server/app/_not-found/page.js")
+R.c("server/chunks/ssr/[root-of-the-server]__b063a12b._.js")
+R.c("server/chunks/ssr/30c07_next_dist_d6da5e77._.js")
+R.c("server/chunks/ssr/30c07_next_dist_esm_build_templates_app-page_db91107d.js")
+R.c("server/chunks/ssr/[root-of-the-server]__fb8cce00._.js")
+R.c("server/chunks/ssr/[root-of-the-server]__6d63a979._.js")
+R.c("server/chunks/ssr/30c07_next_dist_1b4ef711._.js")
+R.c("server/chunks/ssr/frontend_scenario-editor_app_0d38f0d5._.js")
+R.c("server/chunks/ssr/30c07_next_dist_client_components_461eb109._.js")
+R.c("server/chunks/ssr/30c07_next_dist_client_components_builtin_forbidden_9826361f.js")
+R.c("server/chunks/ssr/ceffb_scenario-editor__next-internal_server_app__not-found_page_actions_4692b87c.js")
+R.m(25784)
+module.exports=R.m(25784).exports

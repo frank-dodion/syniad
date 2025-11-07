@@ -1,0 +1,18 @@
+1:"$Sreact.fragment"
+2:I[8313,["/_next/static/chunks/cbdb1355a8cb5bec.js"],"Providers"]
+3:I[12737,["/_next/static/chunks/5fc2b58e6c9bd077.js"],"default"]
+4:I[4257,["/_next/static/chunks/5fc2b58e6c9bd077.js"],"default"]
+5:I[46820,["/_next/static/chunks/5fc2b58e6c9bd077.js"],"ClientPageRoot"]
+6:I[2484,["/_next/static/chunks/cbdb1355a8cb5bec.js","/_next/static/chunks/8365db54ec57baf7.js"],"default"]
+9:I[40839,["/_next/static/chunks/5fc2b58e6c9bd077.js"],"OutletBoundary"]
+a:"$Sreact.suspense"
+c:I[40839,["/_next/static/chunks/5fc2b58e6c9bd077.js"],"ViewportBoundary"]
+e:I[40839,["/_next/static/chunks/5fc2b58e6c9bd077.js"],"MetadataBoundary"]
+10:I[94018,["/_next/static/chunks/5fc2b58e6c9bd077.js"],"default"]
+:HL["/_next/static/chunks/a0bee80cd30c9b2f.css","style"]
+0:{"P":null,"b":"U98awOTnUS196naY8FQnE","c":["",""],"q":"","i":false,"f":[[["",{"children":["__PAGE__",{}]},"$undefined","$undefined",true],[["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/a0bee80cd30c9b2f.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}],["$","script","script-0",{"src":"/_next/static/chunks/cbdb1355a8cb5bec.js","async":true,"nonce":"$undefined"}]],["$","html",null,{"lang":"en","children":["$","body",null,{"children":["$","$L2",null,{"children":["$","$L3",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L4",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]}]}]}]]}],{"children":[["$","$1","c",{"children":[["$","$L5",null,{"Component":"$6","serverProvidedParams":{"searchParams":{},"params":{},"promises":["$@7","$@8"]}}],[["$","script","script-0",{"src":"/_next/static/chunks/8365db54ec57baf7.js","async":true,"nonce":"$undefined"}]],["$","$L9",null,{"children":["$","$a",null,{"name":"Next.MetadataOutlet","children":"$@b"}]}]]}],{},null,false,false]},null,false,false],["$","$1","h",{"children":[null,["$","$Lc",null,{"children":"$@d"}],["$","div",null,{"hidden":true,"children":["$","$Le",null,{"children":["$","$a",null,{"name":"Next.Metadata","children":"$@f"}]}]}],null]}],false]],"m":"$undefined","G":["$10",[]],"s":false,"S":true}
+7:{}
+8:"$0:f:0:1:1:children:0:props:children:0:props:serverProvidedParams:params"
+d:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+f:[["$","title","0",{"children":"Scenario Editor - Syniad"}],["$","meta","1",{"name":"description","content":"Create and edit game scenarios"}]]
+b:null

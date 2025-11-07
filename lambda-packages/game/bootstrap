@@ -1,0 +1,3 @@
+#!/bin/sh
+cd /var/task
+exec node server.js

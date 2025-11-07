@@ -25,6 +25,8 @@ mkdir -p "$PACKAGE_DIR"
 
 # Copy standalone output
 cp -r .next/standalone/* "$PACKAGE_DIR/"
+# Ensure .next directory exists before copying static files
+mkdir -p "$PACKAGE_DIR/.next"
 cp -r .next/static "$PACKAGE_DIR/.next/static"
 cp -r public "$PACKAGE_DIR/public" 2>/dev/null || true
 
@@ -54,6 +56,8 @@ mkdir -p "$PACKAGE_DIR"
 
 # Copy standalone output
 cp -r .next/standalone/* "$PACKAGE_DIR/"
+# Ensure .next directory exists before copying static files
+mkdir -p "$PACKAGE_DIR/.next"
 cp -r .next/static "$PACKAGE_DIR/.next/static"
 cp -r public "$PACKAGE_DIR/public" 2>/dev/null || true
 
