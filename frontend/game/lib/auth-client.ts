@@ -22,13 +22,37 @@ export function useAuth() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    authClient.getSession().then((s) => {
-      setSession(s);
-      setIsLoading(false);
-    }).catch(() => {
-      setSession(null);
-      setIsLoading(false);
-    });
+    const checkSession = async () => {
+      try {
+        const s = await authClient.getSession();
+        // Better Auth returns { data: { session, user }, error: null }
+        const sessionData = s?.data || s;
+        setSession(sessionData);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('[Better Auth Client] Session error:', error);
+        setSession(null);
+        setIsLoading(false);
+      }
+    };
+
+    checkSession();
+
+    // Check session once after a short delay (in case callback just completed)
+    const timeout = setTimeout(checkSession, 1000);
+
+    // Also check when page becomes visible (user comes back from Cognito)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkSession();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearTimeout(timeout);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   return {
@@ -47,12 +71,14 @@ export function useAuth() {
  * Get user info from client-side
  */
 export async function getUserInfo(): Promise<User | null> {
-  const session = await authClient.getSession();
-  if (session?.user) {
+  const s = await authClient.getSession();
+  // Better Auth returns { data: { session, user }, error: null }
+  const sessionData = s?.data || s;
+  if (sessionData?.user) {
     return {
-      userId: session.user.id || '',
-      username: session.user.name || session.user.email || '',
-      email: session.user.email,
+      userId: sessionData.user.id || '',
+      username: sessionData.user.name || sessionData.user.email || '',
+      email: sessionData.user.email,
     };
   }
   return null;
@@ -81,11 +107,13 @@ export async function login(redirectUri?: string) {
  * Logout
  */
 export async function logout() {
-  await authClient.signOut({
-    fetchOptions: {
-      onSuccess: () => {
-        window.location.href = window.location.origin;
-      },
-    },
-  });
+  try {
+    await authClient.signOut();
+    // Redirect to home page after logout
+    window.location.href = window.location.origin;
+  } catch (error) {
+    console.error('[Better Auth Client] Logout error:', error);
+    // Still redirect on error
+    window.location.href = window.location.origin;
+  }
 }

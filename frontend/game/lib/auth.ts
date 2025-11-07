@@ -1,5 +1,4 @@
 import { betterAuth } from "better-auth";
-import { toNextJsHandler } from "better-auth/next-js";
 
 // Cognito configuration - following Better Auth documentation exactly
 const cognitoClientId = process.env.COGNITO_CLIENT_ID || '';
@@ -42,6 +41,29 @@ export const auth = betterAuth({
     expiresIn: 60 * 60 * 24, // 24 hours
     updateAge: 60 * 60, // 1 hour
     strategy: "jwt", // Use JWT sessions (no database needed)
+  },
+  advanced: {
+    generateIdToken: false, // Don't generate our own ID token, use Cognito's
+  },
+  callbacks: {
+    async jwt({ token, account }) {
+      // Store Cognito tokens in JWT token
+      if (account) {
+        token.accessToken = account.access_token;
+        token.idToken = account.id_token;
+        token.refreshToken = account.refresh_token;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // Include Cognito tokens in session for API authentication
+      if (token) {
+        (session as any).accessToken = token.accessToken;
+        (session as any).idToken = token.idToken;
+        (session as any).refreshToken = token.refreshToken;
+      }
+      return session;
+    },
   },
 });
 
