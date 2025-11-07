@@ -43,7 +43,7 @@ export const auth = betterAuth({
     // JWT sessions are used by default when no database is configured
   },
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account }: { token: any; account?: any }) {
       // Store Cognito tokens in JWT token
       if (account) {
         token.accessToken = account.access_token;
@@ -52,7 +52,7 @@ export const auth = betterAuth({
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: { session: any; token?: any }) {
       // Include Cognito tokens in session for API authentication
       if (token) {
         (session as any).accessToken = token.accessToken;
