@@ -42,9 +42,6 @@ export const auth = betterAuth({
     updateAge: 60 * 60, // 1 hour
     // JWT sessions are used by default when no database is configured
   },
-  advanced: {
-    generateIdToken: false, // Don't generate our own ID token, use Cognito's
-  },
   callbacks: {
     async jwt({ token, account }) {
       // Store Cognito tokens in JWT token
