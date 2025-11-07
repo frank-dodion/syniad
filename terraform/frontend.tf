@@ -157,6 +157,25 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
   }
 
+  # Cache behavior for API routes - must come before default behavior
+  # This ensures API routes don't get the custom error response for 403
+  ordered_cache_behavior {
+    path_pattern     = "/api/*"
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "Lambda-Game"
+    viewer_protocol_policy = "redirect-to-https"
+    compress         = true
+
+    forwarded_values {
+      query_string = true
+      headers      = ["*"]
+      cookies {
+        forward = "all"
+      }
+    }
+  }
+
   # Cache behavior for static assets
   ordered_cache_behavior {
     path_pattern     = "/_next/static/*"
@@ -178,14 +197,8 @@ resource "aws_cloudfront_distribution" "frontend" {
     compress               = true
   }
 
-  # Custom error response for 403/404 - serve index.html
-  custom_error_response {
-    error_code         = 403
-    response_code      = 200
-    response_page_path = "/index.html"
-    error_caching_min_ttl = 300
-  }
-  
+  # Custom error response for 404 only - serve index.html for SPA routing
+  # Note: We do NOT convert 403 to 200, as API routes need to return proper 403 errors
   custom_error_response {
     error_code         = 404
     response_code      = 200

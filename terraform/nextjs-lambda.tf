@@ -109,6 +109,7 @@ resource "aws_lambda_function_url" "game" {
 
 # Resource-based policy for Lambda Function URL to allow public access
 # This is required even with authorization_type = "NONE" when accessed through CloudFront
+# Note: For Function URLs with authorization_type = "NONE", this permission allows any principal to invoke
 resource "aws_lambda_permission" "game_function_url" {
   statement_id           = "AllowPublicInvoke"
   action                 = "lambda:InvokeFunctionUrl"
