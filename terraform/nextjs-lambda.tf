@@ -1,3 +1,11 @@
+# Random UUID for Better Auth secret (generated once and stored in state)
+resource "random_uuid" "better_auth_secret" {
+  keepers = {
+    # Regenerate if stage changes
+    stage = var.stage
+  }
+}
+
 # AWS Lambda Web Adapter Layer
 # Using the official AWS Lambda Web Adapter layer (X86_64 architecture)
 # Layer ARN format: arn:aws:lambda:${region}:753240598075:layer:LambdaAdapterLayerX86:${version}
@@ -62,7 +70,7 @@ resource "aws_lambda_function" "scenario_editor" {
       NEXT_PUBLIC_FRONTEND_URL = "https://${local.editor_domain_name}"
       AWS_LAMBDA_EXEC_WRAPPER = "/opt/bootstrap"
       NEXTAUTH_URL            = "https://${local.editor_domain_name}"
-      BETTER_AUTH_SECRET      = "change-me-in-production-min-32-chars" # TODO: Use secrets manager
+      BETTER_AUTH_SECRET      = random_uuid.better_auth_secret.result
       COGNITO_USER_POOL_ID    = aws_cognito_user_pool.users.id
       COGNITO_CLIENT_ID       = aws_cognito_user_pool_client.web_client.id
       COGNITO_CLIENT_SECRET   = "" # Public client, no secret needed
@@ -94,9 +102,10 @@ resource "aws_lambda_function" "game" {
       NEXT_PUBLIC_FRONTEND_URL = "https://${local.frontend_domain_name}"
       AWS_LAMBDA_EXEC_WRAPPER = "/opt/bootstrap"
       NEXTAUTH_URL            = "https://${local.frontend_domain_name}"
-      NEXTAUTH_SECRET         = "change-me-in-production" # TODO: Use secrets manager
+      BETTER_AUTH_SECRET      = random_uuid.better_auth_secret.result
       COGNITO_USER_POOL_ID    = aws_cognito_user_pool.users.id
       COGNITO_CLIENT_ID       = aws_cognito_user_pool_client.web_client.id
+      COGNITO_CLIENT_SECRET   = "" # Public client, no secret needed
       COGNITO_REGION          = var.aws_region
       COGNITO_DOMAIN          = "${aws_cognito_user_pool_domain.auth_domain.domain}.auth.${var.aws_region}.amazoncognito.com"
     }
