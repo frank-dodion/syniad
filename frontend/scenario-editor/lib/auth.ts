@@ -40,7 +40,7 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24, // 24 hours
     updateAge: 60 * 60, // 1 hour
-    strategy: "jwt", // Use JWT sessions (no database needed)
+    // JWT sessions are used by default when no database is configured
   },
   advanced: {
     generateIdToken: false, // Don't generate our own ID token, use Cognito's
