@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "deploy:dev": "bash scripts/deploy-all.sh dev",
+    "deploy:prod": "bash scripts/deploy-all.sh prod"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.922.0",
