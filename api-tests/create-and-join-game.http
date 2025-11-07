@@ -1,6 +1,6 @@
 ### Create and Join Game Workflow - Chained Requests
-### Variables loaded from .env file (gitignored, safe for tokens)
-### Pre-request script reads .env file before every request (no caching!)
+### Variables loaded from .env.api-test file (gitignored, safe for tokens)
+### Pre-request script reads .env.api-test file before every request (no caching!)
 ###
 ### This demonstrates chaining: Create a game, extract the gameId from the response,
 ### then automatically join that game in the next request.
@@ -18,7 +18,7 @@
     // Use realpathSync to ensure we get the actual file path
     const scriptDir = path.dirname(process.env.REST_CLIENT_FILE || __dirname || '');
     const workspaceRoot = path.resolve(scriptDir, '..');
-    const envPath = path.join(workspaceRoot, '.env');
+    const envPath = path.join(workspaceRoot, '.env.api-test');
     
     // Force fresh read - clear cache by using realpath and reading directly
     let envPathResolved;
@@ -103,7 +103,7 @@ Content-Type: application/json
     // Use realpathSync to ensure we get the actual file path
     const scriptDir = path.dirname(process.env.REST_CLIENT_FILE || __dirname || '');
     const workspaceRoot = path.resolve(scriptDir, '..');
-    const envPath = path.join(workspaceRoot, '.env');
+    const envPath = path.join(workspaceRoot, '.env.api-test');
     
     // Force fresh read - clear cache by using realpath and reading directly
     let envPathResolved;

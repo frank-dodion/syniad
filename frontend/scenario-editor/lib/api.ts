@@ -33,7 +33,9 @@ export interface ScenariosResponse {
  */
 async function getAccessToken(): Promise<string | null> {
   try {
-    const response = await fetch('/api/auth/get-session', {
+    // Use Better Auth's built-in session endpoint (handled by [...all] route)
+    // Note: This is for API token extraction, not for UI auth state
+    const response = await fetch('/api/auth/session', {
       credentials: 'include',
       cache: 'no-store',
     });

@@ -4,7 +4,8 @@ import { createAuthClient } from "better-auth/react";
 import { useState, useEffect } from "react";
 
 const authClient = createAuthClient({
-  baseURL: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
+  baseURL: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3002',
+  basePath: '/api/auth',
 });
 
 export interface User {
@@ -24,9 +25,16 @@ export function useAuth() {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const s = await authClient.getSession();
+        // Use Better Auth's built-in getSession() - it handles the endpoint automatically
+        // Add timeout to prevent hanging
+        const s = await Promise.race([
+          authClient.getSession(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Session check timeout')), 3000)
+          )
+        ]);
+        
         // Better Auth returns { data: { session, user }, error: null }
-        // Handle both response formats
         const sessionData = (s && typeof s === 'object' && 'data' in s) 
           ? (s as any).data 
           : (s as any);
@@ -74,19 +82,22 @@ export function useAuth() {
  * Get user info from client-side
  */
 export async function getUserInfo(): Promise<User | null> {
-  const s = await authClient.getSession();
-  // Better Auth returns { data: { session, user }, error: null }
-  // Handle both response formats
-  const sessionData = (s && typeof s === 'object' && 'data' in s) 
-    ? (s as any).data 
-    : (s as any);
-  
-  if (sessionData && typeof sessionData === 'object' && 'user' in sessionData && sessionData.user) {
-    return {
-      userId: sessionData.user.id || '',
-      username: sessionData.user.name || sessionData.user.email || '',
-      email: sessionData.user.email,
-    };
+  try {
+    // Use Better Auth's built-in getSession() method
+    const s = await authClient.getSession();
+    const sessionData = (s && typeof s === 'object' && 'data' in s) 
+      ? (s as any).data 
+      : (s as any);
+    
+    if (sessionData && typeof sessionData === 'object' && 'user' in sessionData && sessionData.user) {
+      return {
+        userId: sessionData.user.id || '',
+        username: sessionData.user.name || sessionData.user.email || '',
+        email: sessionData.user.email,
+      };
+    }
+  } catch (error) {
+    console.error('[Better Auth Client] Error getting user info:', error);
   }
   return null;
 }

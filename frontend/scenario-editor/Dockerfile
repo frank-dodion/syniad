@@ -1,36 +1,76 @@
-# Multi-stage build for Next.js Lambda deployment
-FROM public.ecr.aws/lambda/nodejs:20 AS builder
+# syntax=docker.io/docker/dockerfile:1
 
-# Install dependencies
+FROM node:20-alpine AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
 
-# Copy source code
+# Install dependencies based on the preferred package manager
+COPY package.json package-lock.json* ./
+RUN \
+  if [ -f package-lock.json ]; then npm ci; \
+  else echo "Lockfile not found." && exit 1; \
+  fi
+
+# Rebuild the source code only when needed
+FROM base AS builder
+ENV NEXT_TELEMETRY_DISABLED=1
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN mkdir -p public
 
-# Build Next.js app
+# Accept build args for Next.js public environment variables
+# These are embedded at build time, not runtime
+ARG NEXT_PUBLIC_FRONTEND_URL
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_FRONTEND_URL=${NEXT_PUBLIC_FRONTEND_URL}
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
+# Next.js collects completely anonymous telemetry data about general usage.
+# Learn more here: https://nextjs.org/telemetry
+# Uncomment the following line in case you want to disable telemetry during the build.
+# ENV NEXT_TELEMETRY_DISABLED=1
+
 RUN npm run build
 
-# Production stage - use AWS Lambda base image
-FROM public.ecr.aws/lambda/nodejs:20
+# Production image, copy all the files and run next
+FROM base AS runner
+ENV NEXT_TELEMETRY_DISABLED=1
+WORKDIR /app
 
-# Install Lambda Web Adapter extension
-# The Lambda Web Adapter is installed as an extension in /opt/extensions/
-RUN curl -Lo /opt/extensions/lambda-adapter https://github.com/awslabs/aws-lambda-web-adapter/releases/latest/download/lambda-adapter && \
-    chmod +x /opt/extensions/lambda-adapter
+ENV NODE_ENV=production
+# Uncomment the following line in case you want to disable telemetry during runtime.
+# ENV NEXT_TELEMETRY_DISABLED=1
 
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Lambda requires files in /var/task (Lambda Web Adapter will handle HTTP translation)
+# Automatically leverage output traces to reduce image size
+# https://nextjs.org/docs/advanced-features/output-file-tracing
+WORKDIR /var/task
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Ensure Lambda's default user can read files (Lambda runs as different user)
+# Files are owned by nextjs but readable by all
+RUN chmod -R 755 /var/task
+
+# Lambda Web Adapter (provided via layer) will:
+# 1. Start this server via CMD
+# 2. Listen for HTTP requests on Lambda Function URL
+# 3. Proxy them to this server on PORT 8080
 ENV PORT=8080
-ENV AWS_LAMBDA_EXEC_WRAPPER=/opt/bootstrap
+ENV HOSTNAME="0.0.0.0"
 
-# Copy built application from builder
-COPY --from=builder /app/.next/standalone/ /var/task/
-COPY --from=builder /app/.next/static /var/task/.next/static
-COPY --from=builder /app/public /var/task/public
+# Run as nextjs user for security (files are readable by Lambda's user via chmod)
+USER nextjs
 
-# Set working directory to where server.js is located
-WORKDIR /var/task/frontend/scenario-editor
-
-# Lambda handler - the Lambda Web Adapter will handle HTTP requests
+# server.js is created by next build from the standalone output
+# https://nextjs.org/docs/pages/api-reference/config/next-config-js/output
 CMD ["node", "server.js"]
-

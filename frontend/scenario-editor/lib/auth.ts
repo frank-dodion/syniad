@@ -13,16 +13,22 @@ const baseURL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
 // Better Auth requires a secret (for JWT signing)
 const secret = process.env.BETTER_AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'change-this-secret-in-production-min-32-chars';
 
+// Trusted origins - include baseURL and common local/production URLs
+const trustedOrigins = [
+  baseURL, // Always trust the configured base URL
+  "http://localhost:3000",
+  "http://localhost:3001", // Docker local - scenario-editor
+  "http://localhost:3002", // Docker local - game
+  "https://editor.dev.syniad.net",
+  "https://dev.syniad.net",
+];
+
 // Configure Better Auth with Cognito - following documentation exactly
 export const auth = betterAuth({
   baseURL: baseURL,
   basePath: "/api/auth",
   secret: secret, // Required by Better Auth
-  trustedOrigins: [
-    "http://localhost:3000",
-    "https://editor.dev.syniad.net",
-    "https://dev.syniad.net",
-  ],
+  trustedOrigins: trustedOrigins,
   emailAndPassword: {
     enabled: false, // Using Cognito OAuth only
   },

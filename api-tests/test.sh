@@ -3,19 +3,19 @@
 # Loads credentials from .env file (sourced automatically)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="$SCRIPT_DIR/../.env"
+ENV_FILE="$SCRIPT_DIR/../.env.api-test"
 
-# Source .env file to load credentials
+# Source .env.api-test file to load credentials
 if [ -f "$ENV_FILE" ]; then
     source "$ENV_FILE"
 else
-    echo "Error: .env file not found. Run ./scripts/test-cognito-auth.sh first."
+    echo "Error: .env.api-test file not found. Run ./scripts/test-cognito-auth.sh first."
     exit 1
 fi
 
 # Check required variables
 if [ -z "$API_URL" ] || [ -z "$ID_TOKEN" ]; then
-    echo "Error: API_URL or ID_TOKEN not set in .env file."
+    echo "Error: API_URL or ID_TOKEN not set in .env.api-test file."
     echo "Run ./scripts/test-cognito-auth.sh to generate credentials."
     exit 1
 fi

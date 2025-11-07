@@ -1,9 +1,9 @@
 ### Join Game - Join an existing game
-### Variables loaded from .env file (gitignored, safe for tokens)
-### Pre-request script reads .env file before every request (no caching!)
+### Variables loaded from .env.api-test file (gitignored, safe for tokens)
+### Pre-request script reads .env.api-test file before every request (no caching!)
 ### 
 ### Can use either:
-###   - {{GAME_ID}} from .env file (update manually after creating game)
+###   - {{GAME_ID}} from .env.api-test file (update manually after creating game)
 ###   - {{gameId}} from chained request (if create-game.http was run first)
 
 < {%
@@ -16,7 +16,7 @@
     // Use realpathSync to ensure we get the actual file path
     const scriptDir = path.dirname(process.env.REST_CLIENT_FILE || __dirname || '');
     const workspaceRoot = path.resolve(scriptDir, '..');
-    const envPath = path.join(workspaceRoot, '.env');
+    const envPath = path.join(workspaceRoot, '.env.api-test');
     
     // Force fresh read - clear cache by using realpath and reading directly
     let envPathResolved;

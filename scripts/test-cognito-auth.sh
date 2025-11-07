@@ -295,15 +295,16 @@ if [ -n "$REFRESH_TOKEN" ] && [ "$REFRESH_TOKEN" != "null" ]; then
 fi
 echo ""
 
-# Save to .env file for REST Client (gitignored, safe for tokens)
+# Save to .env.api-test file for REST Client (gitignored, safe for tokens)
 # REST scripts have pre-request scripts that read from this file before every request
 # This ensures variables are always fresh - no caching issues!
-# The .http files NEVER contain tokens - they use pre-request scripts to load from .env
+# The .http files NEVER contain tokens - they use pre-request scripts to load from .env.api-test
+# Note: .env is now reserved for Docker Compose configuration
 
 # Get workspace root directory (where script is located)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ENV_FILE="$WORKSPACE_ROOT/.env"
+ENV_FILE="$WORKSPACE_ROOT/.env.api-test"
 
 if [ -n "$ID_TOKEN" ] && [ "$ID_TOKEN" != "null" ]; then
     # Trim any whitespace/newlines from tokens
@@ -329,8 +330,9 @@ if [ -n "$ID_TOKEN" ] && [ "$ID_TOKEN" != "null" ]; then
         fi
     } > "$ENV_FILE"
     
-    echo -e "${GREEN}✓ Values saved to .env (gitignored)${NC}"
-    echo "  Bash scripts source .env file automatically (no caching!)"
+    echo -e "${GREEN}✓ Values saved to .env.api-test (gitignored)${NC}"
+    echo "  REST Client .http files read from .env.api-test automatically"
+    echo "  Bash scripts can source .env.api-test file (no caching!)"
     echo ""
     echo "  Available scripts:"
     echo "    ./api-tests/test.sh              - Test endpoint"

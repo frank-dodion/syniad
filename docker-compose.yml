@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  scenario-editor:
+    build:
+      context: ./frontend/scenario-editor
+      dockerfile: Dockerfile
+      args:
+        # Docker Compose automatically reads .env file in same directory
+        # These values are used at build time (NEXT_PUBLIC_* vars are embedded during npm run build)
+        NEXT_PUBLIC_FRONTEND_URL: ${NEXT_PUBLIC_FRONTEND_URL_SCENARIO_EDITOR}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    container_name: syniad-scenario-editor-local
+    ports:
+      - "3001:8080"
+    environment:
+      # Runtime environment variables from root .env file
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-8080}
+      HOSTNAME: ${HOSTNAME:-0.0.0.0}
+      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-1}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_FRONTEND_URL: ${NEXT_PUBLIC_FRONTEND_URL_SCENARIO_EDITOR}
+      NEXTAUTH_URL: ${NEXTAUTH_URL_SCENARIO_EDITOR}
+      NEXT_PUBLIC_ASSET_PREFIX: ${NEXT_PUBLIC_ASSET_PREFIX:-}
+      NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
+      COGNITO_CLIENT_SECRET: ${COGNITO_CLIENT_SECRET:-}
+      COGNITO_REGION: ${COGNITO_REGION}
+      COGNITO_DOMAIN: ${COGNITO_DOMAIN}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+    restart: unless-stopped
+
+  game:
+    build:
+      context: ./frontend/game
+      dockerfile: Dockerfile
+      args:
+        # Docker Compose automatically reads .env file in same directory
+        # These values are used at build time (NEXT_PUBLIC_* vars are embedded during npm run build)
+        NEXT_PUBLIC_FRONTEND_URL: ${NEXT_PUBLIC_FRONTEND_URL_GAME}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    container_name: syniad-game-local
+    ports:
+      - "3002:8080"
+    environment:
+      # Runtime environment variables from root .env file
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-8080}
+      HOSTNAME: ${HOSTNAME:-0.0.0.0}
+      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-1}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_FRONTEND_URL: ${NEXT_PUBLIC_FRONTEND_URL_GAME}
+      NEXTAUTH_URL: ${NEXTAUTH_URL_GAME}
+      NEXT_PUBLIC_ASSET_PREFIX: ${NEXT_PUBLIC_ASSET_PREFIX:-}
+      NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
+      COGNITO_CLIENT_SECRET: ${COGNITO_CLIENT_SECRET:-}
+      COGNITO_REGION: ${COGNITO_REGION}
+      COGNITO_DOMAIN: ${COGNITO_DOMAIN}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+    restart: unless-stopped
+

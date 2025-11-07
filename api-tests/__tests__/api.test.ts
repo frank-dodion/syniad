@@ -34,7 +34,7 @@ interface GameResponse {
  * Load environment variables from .env file
  */
 function loadEnv(): EnvVars {
-  const envPath = join(__dirname, '../..', '.env');
+  const envPath = join(__dirname, '../..', '.env.api-test');
   try {
     const content = readFileSync(envPath, 'utf8');
     const vars: Partial<EnvVars> = {};
@@ -52,7 +52,7 @@ function loadEnv(): EnvVars {
     return vars as EnvVars;
   } catch (error) {
     throw new Error(
-      'Failed to load .env file. Run ./scripts/test-cognito-auth.sh first.\n' +
+      'Failed to load .env.api-test file. Run ./scripts/test-cognito-auth.sh first.\n' +
       `Error: ${error instanceof Error ? error.message : String(error)}`
     );
   }
