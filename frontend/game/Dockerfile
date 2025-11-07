@@ -49,7 +49,8 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Lambda requires files in /var/task (Lambda Web Adapter will handle HTTP translation)
+# Lambda requires files in /var/task
+# Lambda Function URLs work directly with container images - no adapter needed
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 WORKDIR /var/task
@@ -61,10 +62,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 # Files are owned by nextjs but readable by all
 RUN chmod -R 755 /var/task
 
-# Lambda Web Adapter (provided via layer) will:
-# 1. Start this server via CMD
-# 2. Listen for HTTP requests on Lambda Function URL
-# 3. Proxy them to this server on PORT 8080
+# Lambda Function URLs invoke the container directly
+# The CMD below starts the Next.js server
+# Lambda will route HTTP requests to this server on PORT 8080
 ENV PORT=8080
 ENV HOSTNAME="0.0.0.0"
 

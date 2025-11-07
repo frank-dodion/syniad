@@ -64,8 +64,7 @@ resource "aws_lambda_function" "scenario_editor" {
   
   image_uri = "${aws_ecr_repository.scenario_editor.repository_url}:latest"
   
-  # Lambda Web Adapter layer for HTTP support
-  layers = ["arn:aws:lambda:${var.aws_region}:753240598075:layer:LambdaAdapterLayerX86:21"]
+  # Note: Lambda Function URLs work directly with container images - no Lambda Web Adapter layer needed
 
   environment {
     variables = {
@@ -101,8 +100,7 @@ resource "aws_lambda_function" "game" {
   
   image_uri = "${aws_ecr_repository.game.repository_url}:latest"
   
-  # Lambda Web Adapter layer for HTTP support
-  layers = ["arn:aws:lambda:${var.aws_region}:753240598075:layer:LambdaAdapterLayerX86:21"]
+  # Note: Lambda Function URLs work directly with container images - no Lambda Web Adapter layer needed
 
   environment {
     variables = {
