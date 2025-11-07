@@ -49,8 +49,22 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Install Lambda Web Adapter for Function URL support
+# Lambda Function URLs use the Lambda Runtime API, which requires the adapter to translate to HTTP
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        ADAPTER_ARCH="x86_64"; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        ADAPTER_ARCH="arm64"; \
+    else \
+        echo "Unsupported architecture: $ARCH" && exit 1; \
+    fi && \
+    curl -L "https://github.com/awslabs/aws-lambda-web-adapter/releases/latest/download/aws-lambda-web-adapter-${ADAPTER_ARCH}" -o /usr/local/bin/aws-lambda-web-adapter && \
+    chmod +x /usr/local/bin/aws-lambda-web-adapter
+
 # Lambda requires files in /var/task
-# Lambda Function URLs work directly with container images - no adapter needed
+# Lambda Function URLs require Lambda Web Adapter (installed above) to translate
+# between Lambda Runtime API invocations and HTTP requests to our Next.js server
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 WORKDIR /var/task
@@ -62,15 +76,15 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 # Files are owned by nextjs but readable by all
 RUN chmod -R 755 /var/task
 
-# Lambda Function URLs invoke the container directly
-# The CMD below starts the Next.js server
-# Lambda will route HTTP requests to this server on PORT 8080
+# Lambda Web Adapter environment variables
+# The adapter translates Lambda Runtime API invocations to HTTP requests
 ENV PORT=8080
 ENV HOSTNAME="0.0.0.0"
 
 # Run as nextjs user for security (files are readable by Lambda's user via chmod)
 USER nextjs
 
-# server.js is created by next build from the standalone output
-# https://nextjs.org/docs/pages/api-reference/config/next-config-js/output
+# Use Lambda Web Adapter as entrypoint, which will start the Next.js server
+# The adapter listens on the Lambda Runtime API and proxies to our server on PORT 8080
+ENTRYPOINT ["/usr/local/bin/aws-lambda-web-adapter"]
 CMD ["node", "server.js"]
