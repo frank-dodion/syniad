@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { extractUserIdentity, createApiResponse } from '@/lib/api-auth';
 import { getAllScenarios, saveScenario } from '@/lib/api-db';
 import { v4 as uuidv4 } from 'uuid';
-import { Scenario, Hex } from '../../../../shared/types';
+import { Scenario, Hex } from '../../../../../shared/types';
 
 // GET /api/scenarios - Get all scenarios
 export async function GET(request: NextRequest) {

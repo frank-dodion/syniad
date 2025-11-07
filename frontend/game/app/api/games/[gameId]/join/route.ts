@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { extractUserIdentity, createApiResponse } from '@/lib/api-auth';
 import { getGame, saveGame } from '@/lib/api-db';
-import { Game } from '../../../../../../shared/types';
+import { Game } from '../../../../../../../shared/types';
 
 // POST /api/games/[gameId]/join - Join a game as player2
 export async function POST(

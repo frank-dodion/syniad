@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { extractUserIdentity, createApiResponse } from '@/lib/api-auth';
 import { saveGame, getAllGames } from '@/lib/api-db';
 import { v4 as uuidv4 } from 'uuid';
-import { Game } from '../../../../shared/types';
+import { Game } from '../../../../../shared/types';
 
 // POST /api/games - Create a new game
 export async function POST(request: NextRequest) {
