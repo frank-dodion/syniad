@@ -44,16 +44,19 @@ export const auth = betterAuth({
   },
   callbacks: {
     async jwt({ token, account }: { token: any; account?: any }) {
-      // Store Cognito tokens in JWT token
+      // Store Cognito tokens in JWT token during initial OAuth callback
       if (account) {
         token.accessToken = account.access_token;
         token.idToken = account.id_token;
         token.refreshToken = account.refresh_token;
       }
+      // Preserve existing tokens if account is not present (session refresh)
+      // The tokens should already be in the token from the initial callback
       return token;
     },
     async session({ session, token }: { session: any; token?: any }) {
       // Include Cognito tokens in session for API authentication
+      // Always try to get tokens from token (which persists in JWT)
       if (token) {
         (session as any).accessToken = token.accessToken;
         (session as any).idToken = token.idToken;

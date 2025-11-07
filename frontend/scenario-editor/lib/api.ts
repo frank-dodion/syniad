@@ -43,9 +43,22 @@ async function getAccessToken(): Promise<string | null> {
       const sessionData = data?.data || data;
       // The Cognito ID token is stored in session.idToken (from callbacks)
       // The API authorizer expects the ID token
-      return sessionData?.session?.idToken || sessionData?.idToken || null;
+      const idToken = sessionData?.session?.idToken || sessionData?.idToken || null;
+      
+      if (!idToken) {
+        console.warn('[API Client] No ID token found in session. Session data:', {
+          hasSession: !!sessionData?.session,
+          hasData: !!sessionData,
+          sessionKeys: sessionData?.session ? Object.keys(sessionData.session) : [],
+          dataKeys: sessionData ? Object.keys(sessionData) : [],
+        });
+      }
+      
+      return idToken;
+    } else {
+      console.error('[API Client] Failed to get session:', response.status, response.statusText);
+      return null;
     }
-    return null;
   } catch (e) {
     console.error('[API Client] Error getting access token:', e);
     return null;
@@ -97,15 +110,22 @@ async function apiRequest(
   }
   
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error', Message: null }));
     console.error('[API Client] API error:', {
       status: response.status,
       statusText: response.statusText,
       error: errorData,
       url,
       hasToken: !!token,
+      tokenLength: token?.length || 0,
     });
-    throw new Error(errorData.error || `API request failed: ${response.status} ${response.statusText}`);
+    
+    // If 403 and no token, suggest user needs to log in
+    if (response.status === 403 && !token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+    
+    throw new Error(errorData.error || errorData.Message || `API request failed: ${response.status} ${response.statusText}`);
   }
   
   return await response.json();
