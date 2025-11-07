@@ -26,7 +26,10 @@ export function useAuth() {
       try {
         const s = await authClient.getSession();
         // Better Auth returns { data: { session, user }, error: null }
-        const sessionData = s?.data || s;
+        // Handle both response formats
+        const sessionData = (s && typeof s === 'object' && 'data' in s) 
+          ? (s as any).data 
+          : (s as any);
         setSession(sessionData);
         setIsLoading(false);
       } catch (error) {
@@ -73,8 +76,12 @@ export function useAuth() {
 export async function getUserInfo(): Promise<User | null> {
   const s = await authClient.getSession();
   // Better Auth returns { data: { session, user }, error: null }
-  const sessionData = s?.data || s;
-  if (sessionData?.user) {
+  // Handle both response formats
+  const sessionData = (s && typeof s === 'object' && 'data' in s) 
+    ? (s as any).data 
+    : (s as any);
+  
+  if (sessionData && typeof sessionData === 'object' && 'user' in sessionData && sessionData.user) {
     return {
       userId: sessionData.user.id || '',
       username: sessionData.user.name || sessionData.user.email || '',
