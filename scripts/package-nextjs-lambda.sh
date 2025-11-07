@@ -31,11 +31,15 @@ cp -r .next/static "$PACKAGE_DIR/.next/static"
 cp -r public "$PACKAGE_DIR/public" 2>/dev/null || true
 
 # Create bootstrap script for Lambda Web Adapter
-# Next.js standalone output includes server.js in the root
+# Next.js standalone output has server.js at frontend/scenario-editor/server.js
+# When AWS_LAMBDA_EXEC_WRAPPER is set, Lambda uses /opt/bootstrap (Web Adapter) as wrapper
+# Our bootstrap script is executed by the wrapper, which provides Node.js
+# Use /usr/bin/node or let the wrapper find node
 cat > "$PACKAGE_DIR/bootstrap" << 'EOF'
 #!/bin/sh
-cd /var/task
-exec node server.js
+cd /var/task/frontend/scenario-editor
+# Try different node paths - Web Adapter should provide node in PATH
+exec node server.js || exec /usr/bin/node server.js || exec /opt/bootstrap/node server.js
 EOF
 chmod +x "$PACKAGE_DIR/bootstrap"
 
@@ -62,10 +66,15 @@ cp -r .next/static "$PACKAGE_DIR/.next/static"
 cp -r public "$PACKAGE_DIR/public" 2>/dev/null || true
 
 # Create bootstrap script for Lambda Web Adapter
+# Next.js standalone output has server.js at frontend/game/server.js
+# When AWS_LAMBDA_EXEC_WRAPPER is set, Lambda uses /opt/bootstrap (Web Adapter) as wrapper
+# Our bootstrap script is executed by the wrapper, which provides Node.js
+# Use /usr/bin/node or let the wrapper find node
 cat > "$PACKAGE_DIR/bootstrap" << 'EOF'
 #!/bin/sh
-cd /var/task
-exec node server.js
+cd /var/task/frontend/game
+# Try different node paths - Web Adapter should provide node in PATH
+exec node server.js || exec /usr/bin/node server.js || exec /opt/bootstrap/node server.js
 EOF
 chmod +x "$PACKAGE_DIR/bootstrap"
 
