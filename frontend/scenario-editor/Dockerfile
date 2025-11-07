@@ -51,7 +51,8 @@ RUN adduser --system --uid 1001 nextjs
 
 # Install Lambda Web Adapter for Function URL support
 # Lambda Function URLs use the Lambda Runtime API, which requires the adapter to translate to HTTP
-RUN ARCH=$(uname -m) && \
+RUN apk add --no-cache curl && \
+    ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
         ADAPTER_ARCH="x86_64"; \
     elif [ "$ARCH" = "aarch64" ]; then \

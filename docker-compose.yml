@@ -1,4 +1,4 @@
-version: '3.8'
+# version is obsolete in newer Docker Compose versions
 
 services:
   scenario-editor:
@@ -13,6 +13,9 @@ services:
     container_name: syniad-scenario-editor-local
     ports:
       - "3001:8080"
+    # Override ENTRYPOINT and CMD for local development - don't use Lambda Web Adapter
+    entrypoint: []
+    command: ["node", "server.js"]
     environment:
       # Runtime environment variables from root .env file
       NODE_ENV: ${NODE_ENV:-production}
@@ -44,6 +47,9 @@ services:
     container_name: syniad-game-local
     ports:
       - "3002:8080"
+    # Override ENTRYPOINT and CMD for local development - don't use Lambda Web Adapter
+    entrypoint: []
+    command: ["node", "server.js"]
     environment:
       # Runtime environment variables from root .env file
       NODE_ENV: ${NODE_ENV:-production}
@@ -62,4 +68,3 @@ services:
       COGNITO_DOMAIN: ${COGNITO_DOMAIN}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
     restart: unless-stopped
-
