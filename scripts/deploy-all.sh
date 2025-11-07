@@ -46,9 +46,17 @@ echo ""
 # echo -e "${GREEN}✓ Lambda functions built${NC}"
 # echo ""
 
-# Step 3: Apply Terraform
+# Step 3: Cleanup orphaned resources (if any)
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}Step 3: Applying Terraform infrastructure...${NC}"
+echo -e "${YELLOW}Step 3: Cleaning up orphaned resources...${NC}"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+cd "$PROJECT_ROOT"
+bash scripts/cleanup-orphaned-resources.sh "$STAGE" || echo -e "${YELLOW}⚠ Cleanup script failed or no resources to clean (continuing...)${NC}"
+echo ""
+
+# Step 4: Apply Terraform
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${YELLOW}Step 4: Applying Terraform infrastructure...${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 cd "$PROJECT_ROOT/terraform"
 
@@ -67,9 +75,9 @@ fi
 echo -e "${GREEN}✓ Infrastructure updated${NC}"
 echo ""
 
-# Step 4: Deploy static assets
+# Step 5: Deploy static assets
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}Step 4: Deploying static assets to S3...${NC}"
+echo -e "${YELLOW}Step 5: Deploying static assets to S3...${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 cd "$PROJECT_ROOT"
 bash scripts/deploy-static-assets.sh "$STAGE"
@@ -80,7 +88,7 @@ fi
 echo -e "${GREEN}✓ Static assets deployed${NC}"
 echo ""
 
-# Step 5: Summary
+# Step 6: Summary
 echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║        Deployment Complete!            ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"

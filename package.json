@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "deploy:dev": "bash scripts/deploy-all.sh dev",
-    "deploy:prod": "bash scripts/deploy-all.sh prod"
+    "deploy:prod": "bash scripts/deploy-all.sh prod",
+    "cleanup:dev": "bash scripts/cleanup-orphaned-resources.sh dev",
+    "cleanup:prod": "bash scripts/cleanup-orphaned-resources.sh prod"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.922.0",
