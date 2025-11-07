@@ -6,32 +6,8 @@ resource "random_uuid" "better_auth_secret" {
   }
 }
 
-# AWS Lambda Web Adapter Layer
-# Using the official AWS Lambda Web Adapter layer (X86_64 architecture)
-# Layer ARN format: arn:aws:lambda:${region}:753240598075:layer:LambdaAdapterLayerX86:${version}
-# Version 21 is a recent stable version (as of 2024)
-locals {
-  web_adapter_layer_arn = "arn:aws:lambda:${var.aws_region}:753240598075:layer:LambdaAdapterLayerX86:21"
-}
-
-# Data source for Next.js scenario-editor package
-data "archive_file" "scenario_editor_lambda" {
-  type        = "zip"
-  source_dir  = "${path.module}/../lambda-packages/scenario-editor"
-  output_path = "${path.module}/../lambda-packages/scenario-editor.zip"
-  depends_on  = [null_resource.build_nextjs]
-}
-
-# Data source for Next.js game package
-data "archive_file" "game_lambda" {
-  type        = "zip"
-  source_dir  = "${path.module}/../lambda-packages/game"
-  output_path = "${path.module}/../lambda-packages/game.zip"
-  depends_on  = [null_resource.build_nextjs]
-}
-
-# Build trigger for Next.js apps
-resource "null_resource" "build_nextjs" {
+# Build and push Docker images for Next.js apps
+resource "null_resource" "build_and_push_docker" {
   triggers = {
     scenario_editor_hash = sha256(join("", [
       for f in fileset("${path.module}/../frontend/scenario-editor", "**/*") : filesha256("${path.module}/../frontend/scenario-editor/${f}")
@@ -39,29 +15,32 @@ resource "null_resource" "build_nextjs" {
     game_hash = sha256(join("", [
       for f in fileset("${path.module}/../frontend/game", "**/*") : filesha256("${path.module}/../frontend/game/${f}")
     ]))
-    build_script = filesha256("${path.module}/../scripts/build-nextjs.sh")
-    package_script = filesha256("${path.module}/../scripts/package-nextjs-lambda.sh")
+    dockerfile_scenario_editor = filesha256("${path.module}/../frontend/scenario-editor/Dockerfile")
+    dockerfile_game = filesha256("${path.module}/../frontend/game/Dockerfile")
+    build_script = filesha256("${path.module}/../scripts/build-and-push-nextjs-docker.sh")
   }
 
   provisioner "local-exec" {
-    command     = "cd ${path.module}/.. && bash scripts/build-nextjs.sh && bash scripts/package-nextjs-lambda.sh"
+    command     = "cd ${path.module}/.. && bash scripts/build-and-push-nextjs-docker.sh"
     on_failure  = continue
     interpreter = ["bash", "-c"]
   }
+
+  depends_on = [
+    aws_ecr_repository.scenario_editor,
+    aws_ecr_repository.game
+  ]
 }
 
-# Lambda Function for Scenario Editor
+# Lambda Function for Scenario Editor (using container image)
 resource "aws_lambda_function" "scenario_editor" {
-  filename         = data.archive_file.scenario_editor_lambda.output_path
-  function_name    = "${local.service_name}-scenario-editor"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "bootstrap"
-  runtime         = "provided.al2023"
-  timeout         = 30
-  memory_size     = 512
-  source_code_hash = data.archive_file.scenario_editor_lambda.output_base64sha256
-
-  layers = [local.web_adapter_layer_arn]
+  function_name = "${local.service_name}-scenario-editor"
+  role          = aws_iam_role.lambda_role.arn
+  timeout       = 30
+  memory_size   = 512
+  package_type  = "Image"
+  
+  image_uri = "${aws_ecr_repository.scenario_editor.repository_url}:latest"
 
   environment {
     variables = {
@@ -79,21 +58,22 @@ resource "aws_lambda_function" "scenario_editor" {
     }
   }
 
+  depends_on = [
+    null_resource.build_and_push_docker
+  ]
+
   tags = local.common_tags
 }
 
-# Lambda Function for Game App
+# Lambda Function for Game App (using container image)
 resource "aws_lambda_function" "game" {
-  filename         = data.archive_file.game_lambda.output_path
-  function_name    = "${local.service_name}-game"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "bootstrap"
-  runtime         = "provided.al2023"
-  timeout         = 30
-  memory_size     = 512
-  source_code_hash = data.archive_file.game_lambda.output_base64sha256
-
-  layers = [local.web_adapter_layer_arn]
+  function_name = "${local.service_name}-game"
+  role          = aws_iam_role.lambda_role.arn
+  timeout       = 30
+  memory_size   = 512
+  package_type  = "Image"
+  
+  image_uri = "${aws_ecr_repository.game.repository_url}:latest"
 
   environment {
     variables = {
