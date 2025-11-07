@@ -1,74 +1,0 @@
-Script started on Sun Nov  2 22:27:58 2025
-[1m[7m%[27m[1m[0m                                                                                                                                    ]2;fjp@surfer-172-29-7-69-www:~/projects/syniad]1;..ojects/syniad]7;file://surfer-172-29-7-69-www.highspeed-internet-access.com/Users/fjp/projects/syniad\[0m[27m[24m[J[01;32m➜  [36msyniad[00m [K[?1h=[?2004h[0m[27m[24m[J[01;32m➜  [36msyniad[00m [01;34mgit:([31mdev[34m) [33m✗[00m [Kccd scripts[1m/[0m[0m [?1l>[?2004l
-]2;cd scripts]1;cd[1m[7m%[27m[1m[0m                                                                                                                                    ]2;fjp@surfer-172-29-7-69-www:~/projects/syniad/scripts]1;..yniad/scripts]7;file://surfer-172-29-7-69-www.highspeed-internet-access.com/Users/fjp/projects/syniad/scripts\[0m[27m[24m[J[01;32m➜  [36mscripts[00m [01;34mgit:([31mdev[34m) [33m✗[00m [K[?1h=[?2004hlll[?1l>[?2004l
-]2;ls -G -lh]1;lltotal 56
--rwxr-xr-x@ 1 fjp  staff   3.3K Nov  2 22:19 [31mbuild-lambda.sh[39;49m[0m
--rwxr-xr-x@ 1 fjp  staff   6.0K Nov  2 10:52 [31mlocal-server.js[39;49m[0m
--rwxr-xr-x@ 1 fjp  staff    13K Nov  2 22:24 [31mtest-cognito-auth.sh[39;49m[0m
-[1m[7m%[27m[1m[0m                                                                                                                                    ]2;fjp@surfer-172-29-7-69-www:~/projects/syniad/scripts]1;..yniad/scripts]7;file://surfer-172-29-7-69-www.highspeed-internet-access.com/Users/fjp/projects/syniad/scripts\[0m[27m[24m[J[01;32m➜  [36mscripts[00m [01;34mgit:([31mdev[34m) [33m✗[00m [K[?1h=[?2004h../test-cognito-auth.sh[1m [0m[0m [?1l>[?2004l
-]2;./test-cognito-auth.sh]1;./test-cognito-auth.sh[1;33m=== Cognito Authentication Helper ===[0m
-
-Enter Cognito User Pool ID: ^C
-[1m[7m%[27m[1m[0m                                                                                                                                    ]2;fjp@surfer-172-29-7-69-www:~/projects/syniad/scripts]1;..yniad/scripts]7;file://surfer-172-29-7-69-www.highspeed-internet-access.com/Users/fjp/projects/syniad/scripts\[0m[27m[24m[J[01;31m➜  [36mscripts[00m [01;34mgit:([31mdev[34m) [33m✗[00m [K[?1h=[?2004hccd ..[?1l>[?2004l
-]2;cd ..]1;cd[1m[7m%[27m[1m[0m                                                                                                                                    ]2;fjp@surfer-172-29-7-69-www:~/projects/syniad]1;..ojects/syniad]7;file://surfer-172-29-7-69-www.highspeed-internet-access.com/Users/fjp/projects/syniad\[0m[27m[24m[J[01;32m➜  [36msyniad[00m [01;34mgit:([31mdev[34m) [33m✗[00m [K[?1h=[?2004h../scripts[1m/[0m[0m/test-cognito-auth.sh[1m [0m[0m [?1l>[?2004l
-]2;./scripts/test-cognito-auth.sh]1;./scripts/test-cognito-auth.sh[1;33m=== Cognito Authentication Helper ===[0m
-
-Attempting to get configuration from Terraform outputs...
-[0;32m✓ Found Cognito configuration from Terraform[0m
-  User Pool ID: us-east-1_ihiQnKRXm
-  Client ID: 5btak8qvo23dvc5c1uso0s33ok
-  Region: us-east-1
-
-Enter email for test user (this will be the username) (default: test@example.com): 
-Enter password (min 8 chars, uppercase, lowercase, number): 
-
-[1;33mCreating/updating user...[0m
-[1;33mUser already exists, updating...[0m
-[1;33mNote: User creation returned: 
-An error occurred (UsernameExistsException) when calling the AdminCreateUser operation: User account already exists[0m
-[0;32m✓ User created/updated[0m
-
-[1;33mAuthenticating...[0m
-[0;32m✓ Authentication successful[0m
-
-[0;32m=== Authentication Success ===[0m
-
-[1;33mAPI URL:[0m
-  https://dev.api.syniad.net
-
-[1;33mID Token (use this in Postman Authorization header):[0m
-  eyJraWQiOiJBc01hK3IrU29Wa2lVTWRtZTIwN0dhOFlFS3VqZUZQQTBvbnRnTzQ4OWRRPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiI5NDQ4ODQyOC05MDExLTcwNGQtZDYyNy05M2EwYTQ2MzhhMTQiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaXNzIjoiaHR0cHM6XC9cL2NvZ25pdG8taWRwLnVzLWVhc3QtMS5hbWF6b25hd3MuY29tXC91cy1lYXN0LTFfaWhpUW5LUlhtIiwiY29nbml0bzp1c2VybmFtZSI6Ijk0NDg4NDI4LTkwMTEtNzA0ZC1kNjI3LTkzYTBhNDYzOGExNCIsIm9yaWdpbl9qdGkiOiI4MTcwYjU5MC00ZjljLTRjNDEtOWZkMS0xMjQwNTg1NTI3Y2MiLCJhdWQiOiI1YnRhazhxdm8yM2R2YzVjMXVzbzBzMzNvayIsImV2ZW50X2lkIjoiYjVkOWJlMjAtMzc3OC00NmRmLWI3ODgtZDA3MWQ3ZWFhNzEyIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE3NjIxMjI1NjAsImV4cCI6MTc2MjIwODk2MCwiaWF0IjoxNzYyMTIyNTYwLCJqdGkiOiI2MmI4Yjg0NC0yZjMxLTRlMTgtYjZhZi1mZTc4NzYwZjBkOTkiLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.lGRi7iY-Uc-JaBEIGg0Qn1RS7b8FbePHLUuFDKEU0Jh-5qcKYAX2UWUw2BEQIaptEO-jSI1jwGTMuZ7Uw17Zo8SW_pfw4mguuj3z-UyO6WWZgUaErTz77UZYN4juzFY9XyID8oI-yXMcJry0uk663WBsT1Bv3HrJEVgKM16iNQQ2ZYKPEReVvPd33cwxvEfWgj2qCxIHzmCEwcHWqkRngv0eXu4GcqBL9ijWzhK_zPqlpjNXXKMT5oSLrdZHw3EsycpCtnffEZcn_oxWWHLSSEsrMdTv56LRnoeeu5Pcd3YqgOFp2QVvlMu56uSVcYnh2ebjkcCgWvvqYZAIeliAkg
-
-[1;33mPostman Configuration:[0m
-1. In Postman, create a new environment
-2. Add these variables:
-   - 'api_url': https://dev.api.syniad.net
-   - 'id_token': eyJraWQiOiJBc01hK3IrU29Wa2lVTWRtZTIwN0dhOFlFS3VqZUZQQTBvbnRnTzQ4OWRRPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiI5NDQ4ODQyOC05MDExLTcwNGQtZDYyNy05M2EwYTQ2MzhhMTQiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaXNzIjoiaHR0cHM6XC9cL2NvZ25pdG8taWRwLnVzLWVhc3QtMS5hbWF6b25hd3MuY29tXC91cy1lYXN0LTFfaWhpUW5LUlhtIiwiY29nbml0bzp1c2VybmFtZSI6Ijk0NDg4NDI4LTkwMTEtNzA0ZC1kNjI3LTkzYTBhNDYzOGExNCIsIm9yaWdpbl9qdGkiOiI4MTcwYjU5MC00ZjljLTRjNDEtOWZkMS0xMjQwNTg1NTI3Y2MiLCJhdWQiOiI1YnRhazhxdm8yM2R2YzVjMXVzbzBzMzNvayIsImV2ZW50X2lkIjoiYjVkOWJlMjAtMzc3OC00NmRmLWI3ODgtZDA3MWQ3ZWFhNzEyIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE3NjIxMjI1NjAsImV4cCI6MTc2MjIwODk2MCwiaWF0IjoxNzYyMTIyNTYwLCJqdGkiOiI2MmI4Yjg0NC0yZjMxLTRlMTgtYjZhZi1mZTc4NzYwZjBkOTkiLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.lGRi7iY-Uc-JaBEIGg0Qn1RS7b8FbePHLUuFDKEU0Jh-5qcKYAX2UWUw2BEQIaptEO-jSI1jwGTMuZ7Uw17Zo8SW_pfw4mguuj3z-UyO6WWZgUaErTz77UZYN4juzFY9XyID8oI-yXMcJry0uk663WBsT1Bv3HrJEVgKM16iNQQ2ZYKPEReVvPd33cwxvEfWgj2qCxIHzmCEwcHWqkRngv0eXu4GcqBL9ijWzhK_zPqlpjNXXKMT5oSLrdZHw3EsycpCtnffEZcn_oxWWHLSSEsrMdTv56LRnoeeu5Pcd3YqgOFp2QVvlMu56uSVcYnh2ebjkcCgWvvqYZAIeliAkg
-
-3. For each request:
-   - URL: {{api_url}}/endpoint
-   - Header: Authorization: Bearer {{id_token}}
-
-[1;33mOr use Authorization tab:[0m
-- Type: Bearer Token
-- Token: {{id_token}}
-
-[1;33m--- Copy these values (or source from .env file) ---[0m
-
-# To export these variables in your shell:
-export API_URL="https://dev.api.syniad.net"
-export ID_TOKEN="eyJraWQiOiJBc01hK3IrU29Wa2lVTWRtZTIwN0dhOFlFS3VqZUZQQTBvbnRnTzQ4OWRRPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiI5NDQ4ODQyOC05MDExLTcwNGQtZDYyNy05M2EwYTQ2MzhhMTQiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaXNzIjoiaHR0cHM6XC9cL2NvZ25pdG8taWRwLnVzLWVhc3QtMS5hbWF6b25hd3MuY29tXC91cy1lYXN0LTFfaWhpUW5LUlhtIiwiY29nbml0bzp1c2VybmFtZSI6Ijk0NDg4NDI4LTkwMTEtNzA0ZC1kNjI3LTkzYTBhNDYzOGExNCIsIm9yaWdpbl9qdGkiOiI4MTcwYjU5MC00ZjljLTRjNDEtOWZkMS0xMjQwNTg1NTI3Y2MiLCJhdWQiOiI1YnRhazhxdm8yM2R2YzVjMXVzbzBzMzNvayIsImV2ZW50X2lkIjoiYjVkOWJlMjAtMzc3OC00NmRmLWI3ODgtZDA3MWQ3ZWFhNzEyIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE3NjIxMjI1NjAsImV4cCI6MTc2MjIwODk2MCwiaWF0IjoxNzYyMTIyNTYwLCJqdGkiOiI2MmI4Yjg0NC0yZjMxLTRlMTgtYjZhZi1mZTc4NzYwZjBkOTkiLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.lGRi7iY-Uc-JaBEIGg0Qn1RS7b8FbePHLUuFDKEU0Jh-5qcKYAX2UWUw2BEQIaptEO-jSI1jwGTMuZ7Uw17Zo8SW_pfw4mguuj3z-UyO6WWZgUaErTz77UZYN4juzFY9XyID8oI-yXMcJry0uk663WBsT1Bv3HrJEVgKM16iNQQ2ZYKPEReVvPd33cwxvEfWgj2qCxIHzmCEwcHWqkRngv0eXu4GcqBL9ijWzhK_zPqlpjNXXKMT5oSLrdZHw3EsycpCtnffEZcn_oxWWHLSSEsrMdTv56LRnoeeu5Pcd3YqgOFp2QVvlMu56uSVcYnh2ebjkcCgWvvqYZAIeliAkg"
-export REFRESH_TOKEN="eyJjdHkiOiJKV1QiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiUlNBLU9BRVAifQ.ZDnjzgKzzA_4eGpTGdTSZJ4CqQ9nNRooij4CSJQqqRpp_fMudedMwZjGWkessFv628MTQhTkrAln7hI28VcF5TwoAhVzJsH-m__3_QWlJTLn2M_v67VGJX-qp2GcPx0q49ry_D6689pyNFOoXkYFFy-Tjigzq6dHrCAq2rfE4eAqFt6gqzwHrUblyUSTzY0u0Nh4XXxKGJZ6jJ0hl3gvgixA-oh74KRp_Bnm_cWhuFA4IOkq5gU3gIOSUWVlOXyUU_iAp3LOOXJ4HZEh-pGfhzJWtYAhC9SvwEe45kh9jPj881Apr_KoWQMedsceRzdFmtskyx5uNPOwHjVVHgy0XQ.vsEaz_6hZq_UXbIW.NeV17wWUm7HAMmehNBdVb7tzg-0WtVa-Lr-SSp1qAlaTU-un6ALfsSl7FyTBWCZ3n1WGlQp8bX23YXK6Q-l5J3Jns2zVzNmRLRt-FRiv2pG9Cnpjw2zRLe2ozg5D8ICR62tZaIJ49PiTm-eOA3RWkDYKbAUbbcksTTb0j1KmN6LiGugS4r2se3aGN4co05v-yTjTYd3DGG9_khlw63xEvecY1_56Q41UezIkUaSE_ZGHSvMECTvgL6mSmnm37yT3hTqtHRKD6hI-n9jAqiz4Wo8Ar_OiEjLXDGg5yB8_-1sL0hyE1T3wyeHSeIEWIKWZqVCJWqiYAYbv-I913yjp-bkx4nLboNEI-HbDqf9zS5IbsYwU1ACrRMpUPJQ8CVQBpB1BD7DSLY7R394ezsOF5CiocXqUybQigb4sOYMws9w-IBMCKB8OGPgMZdjFcbW4vNfpLER0rU38oJTt-jxtp1jQ0JIUeI8DV3J1kw2I6whgDpv6gtY6ej4PMHfuRcjjIypiyJ1M2TenXwndhqfVuSAfDQWOYJf04NNaTQannf3Td0j7IcuJRl5vYBK82UcZ3tGBGE497vHbsh8jYQQukdn7UfFhw_QJpfWY6NsPp7_N8bG9ArBGuWPgm55mH54GbZB5DCf8YVdkO1YAfpP5v6FGV-CJ9kVTk_0Whw6gwXx84fsV4QVuXGDJZvdwGKNW5NBNvXa2qIC4pdUlJmeyp88nJrZ5cpvRZw9vymwyGKQzjiguilOwgW6TtUa7gx9lPfCdu6LynUM2U1qWwcPY5ib8OFt0jA01d7Shc9mRwp2TstyaMEOgMWsPQRCHJKUPPm5rFSJNsVIYIMjuOEmVb-OsMb1LASMSikgKYe8FsDK6zeZBZXO5jB70knEwZDmiQIHRLmaxoy73cwInTQQgkODdBefK-4916-Cwq_kTMOrLLjq_kYgAJgqKjuLWCBEG7-_d-483cfTJ8tLzY0T09_14p4N5Ex__3eYBkQChqCl7t-4zZ6UC2EOXHXgSf5SMRJ_fqVQUbsDB-JXOAhthteUyHlc8BcpCSLl-yIQCT4_VfUpecb5h184_IdoEGuivCPchgyLhee6CUQ2Z3Et1iZELRSe_c_Jtt9gHRuRLBEHmbyliSHhXlboZr-esVICz6nieezjxxmjDHk0nMKVWCgp1bM4HotjM0AS6t9a8pmnlTE-98f3EQef8_D_RYRxRvlvuRLd2IT3Dd6d4ii9FMrXNFHgOJYYpBW5XXX5gNKbpyglkC8b8cEhjuvAgvijsCqg0yH7t-QJPrM0UMnmRWu9dMH1fqofjPlm8QlWJR5J8GuqN91OJA8Fp_g.bEG9XgE1_3Vi__lmwiI_KQ"
-
-[0;32m✓ Values saved to .cognito-test.env[0m
-  To use: source .cognito-test.env
-  Or: export $(grep -v '^#' .cognito-test.env | xargs)
-
-[0;32m✓ Updated api-requests.http with new token[0m
-  You can now use REST Client extension to test your API!
-
-[1;33mRefresh Token (save for later):[0m
-  eyJjdHkiOiJKV1QiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiUlNBLU9BRVAifQ.ZDnjzgKzzA_4eGpTGdTSZJ4CqQ9nNRooij4CSJQqqRpp_fMudedMwZjGWkessFv628MTQhTkrAln7hI28VcF5TwoAhVzJsH-m__3_QWlJTLn2M_v67VGJX-qp2GcPx0q49ry_D6689pyNFOoXkYFFy-Tjigzq6dHrCAq2rfE4eAqFt6gqzwHrUblyUSTzY0u0Nh4XXxKGJZ6jJ0hl3gvgixA-oh74KRp_Bnm_cWhuFA4IOkq5gU3gIOSUWVlOXyUU_iAp3LOOXJ4HZEh-pGfhzJWtYAhC9SvwEe45kh9jPj881Apr_KoWQMedsceRzdFmtskyx5uNPOwHjVVHgy0XQ.vsEaz_6hZq_UXbIW.NeV17wWUm7HAMmehNBdVb7tzg-0WtVa-Lr-SSp1qAlaTU-un6ALfsSl7FyTBWCZ3n1WGlQp8bX23YXK6Q-l5J3Jns2zVzNmRLRt-FRiv2pG9Cnpjw2zRLe2ozg5D8ICR62tZaIJ49PiTm-eOA3RWkDYKbAUbbcksTTb0j1KmN6LiGugS4r2se3aGN4co05v-yTjTYd3DGG9_khlw63xEvecY1_56Q41UezIkUaSE_ZGHSvMECTvgL6mSmnm37yT3hTqtHRKD6hI-n9jAqiz4Wo8Ar_OiEjLXDGg5yB8_-1sL0hyE1T3wyeHSeIEWIKWZqVCJWqiYAYbv-I913yjp-bkx4nLboNEI-HbDqf9zS5IbsYwU1ACrRMpUPJQ8CVQBpB1BD7DSLY7R394ezsOF5CiocXqUybQigb4sOYMws9w-IBMCKB8OGPgMZdjFcbW4vNfpLER0rU38oJTt-jxtp1jQ0JIUeI8DV3J1kw2I6whgDpv6gtY6ej4PMHfuRcjjIypiyJ1M2TenXwndhqfVuSAfDQWOYJf04NNaTQannf3Td0j7IcuJRl5vYBK82UcZ3tGBGE497vHbsh8jYQQukdn7UfFhw_QJpfWY6NsPp7_N8bG9ArBGuWPgm55mH54GbZB5DCf8YVdkO1YAfpP5v6FGV-CJ9kVTk_0Whw6gwXx84fsV4QVuXGDJZvdwGKNW5NBNvXa2qIC4pdUlJmeyp88nJrZ5cpvRZw9vymwyGKQzjiguilOwgW6TtUa7gx9lPfCdu6LynUM2U1qWwcPY5ib8OFt0jA01d7Shc9mRwp2TstyaMEOgMWsPQRCHJKUPPm5rFSJNsVIYIMjuOEmVb-OsMb1LASMSikgKYe8FsDK6zeZBZXO5jB70knEwZDmiQIHRLmaxoy73cwInTQQgkODdBefK-4916-Cwq_kTMOrLLjq_kYgAJgqKjuLWCBEG7-_d-483cfTJ8tLzY0T09_14p4N5Ex__3eYBkQChqCl7t-4zZ6UC2EOXHXgSf5SMRJ_fqVQUbsDB-JXOAhthteUyHlc8BcpCSLl-yIQCT4_VfUpecb5h184_IdoEGuivCPchgyLhee6CUQ2Z3Et1iZELRSe_c_Jtt9gHRuRLBEHmbyliSHhXlboZr-esVICz6nieezjxxmjDHk0nMKVWCgp1bM4HotjM0AS6t9a8pmnlTE-98f3EQef8_D_RYRxRvlvuRLd2IT3Dd6d4ii9FMrXNFHgOJYYpBW5XXX5gNKbpyglkC8b8cEhjuvAgvijsCqg0yH7t-QJPrM0UMnmRWu9dMH1fqofjPlm8QlWJR5J8GuqN91OJA8Fp_g.bEG9XgE1_3Vi__lmwiI_KQ
-
-[0;32mYou can now test the API endpoints![0m
-[1m[7m%[27m[1m[0m                                                                                                                                    ]2;fjp@surfer-172-29-7-69-www:~/projects/syniad]1;..ojects/syniad]7;file://surfer-172-29-7-69-www.highspeed-internet-access.com/Users/fjp/projects/syniad\[0m[27m[24m[J[01;32m➜  [36msyniad[00m [01;34mgit:([31mdev[34m) [33m✗[00m [K[?1h=[?2004h

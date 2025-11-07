@@ -9,7 +9,7 @@ import { Buffer } from 'buffer';
 // Load environment variables
 function loadEnv() {
   const fs = require('fs');
-  const envFile = path.join(__dirname, '../../.env.api-test');
+  const envFile = path.join(__dirname, '../../.env');
   const envVars: Record<string, string> = {};
   
   if (fs.existsSync(envFile)) {

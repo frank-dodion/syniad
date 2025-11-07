@@ -23,6 +23,16 @@ output "games_table_name" {
   value       = aws_dynamodb_table.games.name
 }
 
+output "player_games_table_name" {
+  description = "DynamoDB Player Games table name"
+  value       = aws_dynamodb_table.player_games.name
+}
+
+output "scenarios_table_name" {
+  description = "DynamoDB Scenarios table name"
+  value       = aws_dynamodb_table.scenarios.name
+}
+
 output "cognito_user_pool_id" {
   description = "Cognito User Pool ID"
   value       = aws_cognito_user_pool.users.id
@@ -58,34 +68,9 @@ output "frontend_cloudfront_distribution_id" {
   value       = aws_cloudfront_distribution.frontend.id
 }
 
-output "scenario_editor_url" {
-  description = "Scenario editor application URL"
-  value       = "https://${local.editor_domain_name}"
-}
-
-output "scenario_editor_bucket_name" {
-  description = "S3 bucket name for scenario editor"
-  value       = aws_s3_bucket.scenario_editor.id
-}
-
-output "scenario_editor_cloudfront_distribution_id" {
-  description = "CloudFront distribution ID for scenario editor"
-  value       = aws_cloudfront_distribution.scenario_editor.id
-}
-
-output "scenario_editor_static_bucket_name" {
-  description = "S3 bucket name for scenario editor static assets"
-  value       = aws_s3_bucket.scenario_editor_static.id
-}
-
 output "game_static_bucket_name" {
   description = "S3 bucket name for game app static assets"
   value       = aws_s3_bucket.game_static.id
-}
-
-output "scenario_editor_lambda_function_url" {
-  description = "Lambda Function URL for scenario editor"
-  value       = aws_lambda_function_url.scenario_editor.function_url
 }
 
 output "game_lambda_function_url" {

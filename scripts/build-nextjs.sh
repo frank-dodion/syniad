@@ -8,19 +8,13 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-echo "Building Next.js applications for Lambda..."
+echo "Building Next.js application for Lambda..."
 
-# Build scenario-editor
-echo "Building scenario-editor..."
-cd "$PROJECT_ROOT/frontend/scenario-editor"
+# Build app (includes game and scenario editor)
+echo "Building app..."
+cd "$PROJECT_ROOT"
 npm install
 npm run build
 
-# Build game
-echo "Building game..."
-cd "$PROJECT_ROOT/frontend/game"
-npm install
-npm run build
-
-echo "Next.js builds completed successfully!"
+echo "Next.js build completed successfully!"
 

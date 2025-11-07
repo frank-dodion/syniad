@@ -1,6 +1,6 @@
 ### Create Game - Creates a new game and returns gameId
-### Variables loaded from .env.api-test file (gitignored, safe for tokens)
-### Pre-request script reads .env.api-test file before every request (no caching!)
+### Variables loaded from .env file (gitignored, safe for tokens)
+### Pre-request script reads .env file before every request (no caching!)
 
 < {%
     // Pre-request script: Read .env file and load variables before EVERY request
@@ -14,7 +14,7 @@
     try {
         // Method 1: Try using process.cwd() (current working directory)
         const cwd = process.cwd();
-        if (fs.existsSync(path.join(cwd, '.env.api-test'))) {
+        if (fs.existsSync(path.join(cwd, '.env'))) {
             workspaceRoot = cwd;
         } else if (fs.existsSync(path.join(cwd, 'api-tests'))) {
             workspaceRoot = cwd;
@@ -28,7 +28,7 @@
         workspaceRoot = path.resolve('..');
     }
     
-    const envPath = path.join(workspaceRoot, '.env.api-test');
+    const envPath = path.join(workspaceRoot, '.env');
     
     // Force fresh read - use realpath to ensure we get the actual file
     let envPathResolved;

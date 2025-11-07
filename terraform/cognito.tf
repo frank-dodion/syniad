@@ -52,24 +52,18 @@ resource "aws_cognito_user_pool_client" "web_client" {
   ]
 
   # Callback URLs - include Better Auth callback URLs
-  # Includes production domains and local development URLs (Docker ports 3001, 3002)
+  # Includes production domains and local development URLs
   callback_urls = concat(
     [
       "https://${local.frontend_domain_name}/api/auth/callback/cognito",
-      "https://${local.editor_domain_name}/api/auth/callback/cognito",
-      "http://localhost:3000/api/auth/callback/cognito",
-      "http://localhost:3001/api/auth/callback/cognito", # Docker local - scenario-editor
-      "http://localhost:3002/api/auth/callback/cognito", # Docker local - game
+      "http://localhost:3000/api/auth/callback/cognito", # Local development
     ],
     var.cognito_callback_urls
   )
   logout_urls = concat(
     [
       "https://${local.frontend_domain_name}",
-      "https://${local.editor_domain_name}",
-      "http://localhost:3000",
-      "http://localhost:3001", # Docker local - scenario-editor
-      "http://localhost:3002", # Docker local - game
+      "http://localhost:3000", # Local development
     ],
     var.cognito_logout_urls
   )

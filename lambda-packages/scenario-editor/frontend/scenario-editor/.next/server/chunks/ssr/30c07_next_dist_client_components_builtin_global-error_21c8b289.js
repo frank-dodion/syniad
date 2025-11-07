@@ -1,3 +1,0 @@
-module.exports=[74665,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(74434);a.n(d("[project]/frontend/scenario-editor/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>"))},25749,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(74434);a.n(d("[project]/frontend/scenario-editor/node_modules/next/dist/client/components/builtin/global-error.js"))},46132,a=>{"use strict";a.i(74665);var b=a.i(25749);a.n(b)}];
-
-//# sourceMappingURL=30c07_next_dist_client_components_builtin_global-error_21c8b289.js.map

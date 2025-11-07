@@ -3,19 +3,19 @@
 # Loads credentials from .env file (sourced automatically)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="$SCRIPT_DIR/../.env.api-test"
+ENV_FILE="$SCRIPT_DIR/../.env"
 
-# Source .env.api-test file to load credentials
+# Source .env file to load credentials
 if [ -f "$ENV_FILE" ]; then
     source "$ENV_FILE"
 else
-    echo "Error: .env.api-test file not found. Run ./scripts/test-cognito-auth.sh first."
+    echo "Error: .env file not found. Run ./scripts/test-cognito-auth.sh first."
     exit 1
 fi
 
 # Check required variables
 if [ -z "$API_URL" ] || [ -z "$ID_TOKEN" ]; then
-    echo "Error: API_URL or ID_TOKEN not set in .env.api-test file."
+    echo "Error: API_URL or ID_TOKEN not set in .env file."
     echo "Run ./scripts/test-cognito-auth.sh to generate credentials."
     exit 1
 fi
@@ -75,7 +75,7 @@ if [ "$http_code" = "200" ]; then
         echo ""
         echo "✓ Game created! GameId: $gameId"
         echo ""
-        echo "To update .env.api-test with this gameId, run:"
+        echo "To update .env with this gameId, run:"
         echo "  sed -i '' 's/^GAME_ID=.*/GAME_ID=$gameId/' $ENV_FILE"
     fi
 fi

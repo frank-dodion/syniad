@@ -24,13 +24,13 @@ echo ""
 echo -e "${GREEN}Stage: ${STAGE}${NC}"
 echo ""
 
-# Step 1: Build Next.js apps
+# Step 1: Build Next.js apps (for static assets deployment to S3)
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${YELLOW}Step 1: Building Next.js applications...${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 cd "$PROJECT_ROOT"
 bash scripts/build-nextjs.sh
-bash scripts/package-nextjs-lambda.sh
+# Note: package-nextjs-lambda.sh is no longer needed - we use Docker container images
 echo ""
 
 # Step 2: Build Lambda functions (skipped - API routes are now in Next.js app)
@@ -87,16 +87,13 @@ echo -e "${BLUE}╚════════════════════�
 echo ""
 
 cd "$PROJECT_ROOT/terraform"
-EDITOR_URL=$(terraform output -raw scenario_editor_url 2>/dev/null || echo "")
 GAME_URL=$(terraform output -raw frontend_url 2>/dev/null || echo "")
-API_URL=$(terraform output -raw custom_domain_url 2>/dev/null || terraform output -raw api_url 2>/dev/null || echo "")
+API_URL=$(terraform output -raw api_url 2>/dev/null || echo "")
 
 echo -e "${GREEN}Deployed Applications:${NC}"
-if [ -n "$EDITOR_URL" ]; then
-    echo -e "  ${GREEN}✓${NC} Scenario Editor: ${EDITOR_URL}"
-fi
 if [ -n "$GAME_URL" ]; then
     echo -e "  ${GREEN}✓${NC} Game App:        ${GAME_URL}"
+    echo -e "  ${GREEN}✓${NC} Scenario Editor: ${GAME_URL}/editor"
 fi
 if [ -n "$API_URL" ]; then
     echo -e "  ${GREEN}✓${NC} API:             ${API_URL}"

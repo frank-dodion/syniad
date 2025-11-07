@@ -1,6 +1,6 @@
 ### Test Endpoint - Verify authentication works
-### Variables loaded from .env.api-test file (gitignored, safe for tokens)
-### Pre-request script reads .env.api-test file before every request (no caching!)
+### Variables loaded from .env file (gitignored, safe for tokens)
+### Pre-request script reads .env file before every request (no caching!)
 
 < {%
     // Pre-request script: Read .env file and load variables before EVERY request
@@ -8,11 +8,11 @@
     const fs = require('fs');
     const path = require('path');
     
-    // Find .env.api-test file in workspace root (up from api-tests/)
+    // Find .env file in workspace root (up from api-tests/)
     // Use realpathSync to ensure we get the actual file path
     const scriptDir = path.dirname(process.env.REST_CLIENT_FILE || __dirname || '');
     const workspaceRoot = path.resolve(scriptDir, '..');
-    const envPath = path.join(workspaceRoot, '.env.api-test');
+    const envPath = path.join(workspaceRoot, '.env');
     
     // Force fresh read - clear cache by using realpath and reading directly
     let envPathResolved;

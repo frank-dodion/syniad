@@ -41,9 +41,7 @@ Thumbs.db
 *.tfplan
 tfplan
 
-# Lambda packages
-lambda-packages/
-lambda-zips/
+# Build artifacts
 .build/
 
 # Docker

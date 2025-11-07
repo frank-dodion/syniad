@@ -41,21 +41,31 @@ if [ -f "$ROOT_ENV" ]; then
   echo "   ✓ Backed up old .env to .env.backup"
 fi
 
-# Step 2: Get Cognito values from Terraform
+# Step 2: Get values from Terraform
 echo ""
-echo "Attempting to get Cognito values from Terraform..."
+echo "Attempting to get values from Terraform..."
 cd "$PROJECT_ROOT/terraform"
 
 COGNITO_POOL_ID=""
 COGNITO_CLIENT_ID=""
 COGNITO_DOMAIN=""
 COGNITO_REGION="us-east-1"
+AWS_REGION="us-east-1"
+GAMES_TABLE=""
+PLAYER_GAMES_TABLE=""
+SCENARIOS_TABLE=""
 
-if terraform output -json > /dev/null 2>&1; then
+# Try to get values from Terraform outputs
+# Check if terraform is initialized and has outputs
+if [ -f ".terraform/terraform.tfstate" ] || terraform output cognito_user_pool_id > /dev/null 2>&1; then
   COGNITO_POOL_ID=$(terraform output -raw cognito_user_pool_id 2>/dev/null || echo "")
   COGNITO_CLIENT_ID=$(terraform output -raw cognito_user_pool_client_id 2>/dev/null || echo "")
   COGNITO_DOMAIN=$(terraform output -raw cognito_domain 2>/dev/null || echo "")
   COGNITO_REGION=$(terraform output -raw cognito_region 2>/dev/null || echo "us-east-1")
+  AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "us-east-1")
+  GAMES_TABLE=$(terraform output -raw games_table_name 2>/dev/null || echo "")
+  PLAYER_GAMES_TABLE=$(terraform output -raw player_games_table_name 2>/dev/null || echo "")
+  SCENARIOS_TABLE=$(terraform output -raw scenarios_table_name 2>/dev/null || echo "")
   
   if [ -n "$COGNITO_POOL_ID" ] && [ -n "$COGNITO_CLIENT_ID" ]; then
     echo "✓ Found Cognito values from Terraform:"
@@ -65,9 +75,60 @@ if terraform output -json > /dev/null 2>&1; then
     echo "  Region: $COGNITO_REGION"
   else
     echo "⚠️  Could not get all Cognito values from Terraform"
+    echo "   Make sure Terraform has been applied: cd terraform && terraform apply"
+  fi
+  
+  # If we have GAMES_TABLE but missing others, try to derive them from the pattern
+  # Table names follow pattern: ${service_name}-games, ${service_name}-player-games, ${service_name}-scenarios
+  if [ -n "$GAMES_TABLE" ] && [ -z "$PLAYER_GAMES_TABLE" ]; then
+    # Extract service name from games table (e.g., "syniad-dev-games" -> "syniad-dev")
+    SERVICE_NAME=$(echo "$GAMES_TABLE" | sed 's/-games$//')
+    if [ -n "$SERVICE_NAME" ]; then
+      PLAYER_GAMES_TABLE="${SERVICE_NAME}-player-games"
+      echo "  ℹ️  Derived Player Games Table from pattern: $PLAYER_GAMES_TABLE"
+    fi
+  fi
+  
+  if [ -n "$GAMES_TABLE" ] && [ -z "$SCENARIOS_TABLE" ]; then
+    # Extract service name from games table (e.g., "syniad-dev-games" -> "syniad-dev")
+    SERVICE_NAME=$(echo "$GAMES_TABLE" | sed 's/-games$//')
+    if [ -n "$SERVICE_NAME" ]; then
+      SCENARIOS_TABLE="${SERVICE_NAME}-scenarios"
+      echo "  ℹ️  Derived Scenarios Table from pattern: $SCENARIOS_TABLE"
+    fi
+  fi
+  
+  # Report what we found (even if some are missing)
+  echo ""
+  echo "DynamoDB table names:"
+  if [ -n "$GAMES_TABLE" ]; then
+    echo "  ✓ Games Table: $GAMES_TABLE"
+  else
+    echo "  ⚠️  Games Table: not found"
+  fi
+  if [ -n "$PLAYER_GAMES_TABLE" ]; then
+    echo "  ✓ Player Games Table: $PLAYER_GAMES_TABLE"
+  else
+    echo "  ⚠️  Player Games Table: not found"
+  fi
+  if [ -n "$SCENARIOS_TABLE" ]; then
+    echo "  ✓ Scenarios Table: $SCENARIOS_TABLE"
+  else
+    echo "  ⚠️  Scenarios Table: not found"
+  fi
+  
+  if [ -z "$GAMES_TABLE" ] || [ -z "$PLAYER_GAMES_TABLE" ] || [ -z "$SCENARIOS_TABLE" ]; then
+    echo ""
+    echo "⚠️  Some DynamoDB table names are missing"
+    echo "   This might be because:"
+    echo "   1. Terraform hasn't been applied yet: cd terraform && terraform apply"
+    echo "   2. The outputs don't exist in your Terraform state"
+    echo "   You can manually set these values in .env if needed"
   fi
 else
   echo "⚠️  Terraform not initialized or outputs not available"
+  echo "   Initialize Terraform: cd terraform && terraform init"
+  echo "   Apply Terraform: cd terraform && terraform apply"
 fi
 
 # Construct full Cognito domain
@@ -84,7 +145,7 @@ echo ""
 echo "Creating root .env file with all environment variables..."
 cat > "$ROOT_ENV" << EOF
 # Docker Compose Environment Variables
-# This single .env file contains all variables for both apps
+# This .env file contains all variables for the app
 # Docker Compose automatically reads this file for variable substitution
 # Do not commit secrets to git
 
@@ -92,12 +153,11 @@ cat > "$ROOT_ENV" << EOF
 # Build-time variables (for Docker build args)
 # NEXT_PUBLIC_* vars are embedded at build time during npm run build
 # ============================================================================
-NEXT_PUBLIC_FRONTEND_URL_SCENARIO_EDITOR=http://localhost:3001
-NEXT_PUBLIC_FRONTEND_URL_GAME=http://localhost:3002
+NEXT_PUBLIC_FRONTEND_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:3000
 
 # ============================================================================
-# Runtime variables (shared by both apps)
+# Runtime variables
 # ============================================================================
 NODE_ENV=production
 PORT=8080
@@ -118,14 +178,47 @@ COGNITO_DOMAIN=${FULL_DOMAIN}
 # Better Auth Secret (for local dev)
 BETTER_AUTH_SECRET=local-dev-secret-change-in-production
 
-# ============================================================================
-# App-specific runtime variables
-# ============================================================================
-# Scenario Editor
-NEXTAUTH_URL_SCENARIO_EDITOR=http://localhost:3001
+# Auth URLs
+NEXTAUTH_URL=http://localhost:3000
 
-# Game
-NEXTAUTH_URL_GAME=http://localhost:3002
+# ============================================================================
+# AWS Configuration for DynamoDB (optional - for local dev with real DynamoDB)
+# ============================================================================
+# Set these if you want to connect to real DynamoDB tables when running locally
+# AWS SDK will automatically use credentials from:
+# - Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN)
+# - AWS credentials file (~/.aws/credentials) via AWS_PROFILE
+# - IAM role (when running on EC2/Lambda)
+# Leave empty to use default AWS credential chain
+AWS_REGION=${AWS_REGION}
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_SESSION_TOKEN=
+AWS_PROFILE=
+
+# DynamoDB Table Names (from Terraform)
+# These are required for connecting to real DynamoDB tables
+# If empty, you can manually set them based on your Terraform outputs:
+#   terraform output games_table_name
+#   terraform output player_games_table_name
+#   terraform output scenarios_table_name
+GAMES_TABLE=${GAMES_TABLE}
+PLAYER_GAMES_TABLE=${PLAYER_GAMES_TABLE}
+SCENARIOS_TABLE=${SCENARIOS_TABLE}
+
+# Set LOCAL_MODE=true to use in-memory mock storage instead of real DynamoDB
+# Set LOCAL_MODE=false (or leave empty) to use real DynamoDB when credentials are available
+LOCAL_MODE=false
+
+# ============================================================================
+# API Testing / REST Client Variables (optional)
+# ============================================================================
+# These are used by REST Client .http files and API test scripts
+# Run ./scripts/test-cognito-auth.sh to populate ID_TOKEN and REFRESH_TOKEN
+API_URL=https://dev.syniad.net/api
+ID_TOKEN=
+REFRESH_TOKEN=
+GAME_ID=paste-game-id-here
 EOF
 echo "✓ Created root .env file"
 
@@ -134,30 +227,52 @@ echo "----- .env -----"
 cat "$ROOT_ENV"
 echo "----------------"
 
-# Step 6: Ensure .env.api-test exists (ONLY REST Client variables)
-if [ ! -f "$API_TEST_ENV" ]; then
+# Step 6: Migrate tokens from .env.api-test if it exists
+if [ -f "$API_TEST_ENV" ]; then
   echo ""
-  echo "Creating .env.api-test..."
-  cat > "$API_TEST_ENV" << EOF
-# REST Client Test Credentials
-# This file is used by REST Client .http files and test scripts
-# Do not commit tokens to git
-
-API_URL=https://dev.api.syniad.net
-ID_TOKEN=
-REFRESH_TOKEN=
-GAME_ID=paste-game-id-here
-EOF
-  echo "✓ Created .env.api-test (empty - run ./scripts/test-cognito-auth.sh to populate)"
-else
-  echo ""
-  echo "✓ .env.api-test already exists (preserving existing tokens)"
+  echo "Migrating tokens from .env.api-test to .env..."
+  
+  # Extract tokens from .env.api-test
+  OLD_ID_TOKEN=$(grep "^ID_TOKEN=" "$API_TEST_ENV" 2>/dev/null | cut -d'=' -f2- | head -1)
+  OLD_REFRESH_TOKEN=$(grep "^REFRESH_TOKEN=" "$API_TEST_ENV" 2>/dev/null | cut -d'=' -f2- | head -1)
+  OLD_GAME_ID=$(grep "^GAME_ID=" "$API_TEST_ENV" 2>/dev/null | cut -d'=' -f2- | head -1)
+  OLD_API_URL=$(grep "^API_URL=" "$API_TEST_ENV" 2>/dev/null | cut -d'=' -f2- | head -1)
+  
+  # Update .env with tokens if they exist
+  if [ -n "$OLD_ID_TOKEN" ] || [ -n "$OLD_REFRESH_TOKEN" ] || [ -n "$OLD_GAME_ID" ] || [ -n "$OLD_API_URL" ]; then
+    # Use a temporary file for safe editing
+    TEMP_ENV=$(mktemp)
+    cp "$ROOT_ENV" "$TEMP_ENV"
+    
+    # Update values in temp file
+    if [ -n "$OLD_ID_TOKEN" ]; then
+      sed -i.bak "s|^ID_TOKEN=.*|ID_TOKEN=$OLD_ID_TOKEN|" "$TEMP_ENV" 2>/dev/null || \
+      sed -i '' "s|^ID_TOKEN=.*|ID_TOKEN=$OLD_ID_TOKEN|" "$TEMP_ENV"
+    fi
+    if [ -n "$OLD_REFRESH_TOKEN" ]; then
+      sed -i.bak "s|^REFRESH_TOKEN=.*|REFRESH_TOKEN=$OLD_REFRESH_TOKEN|" "$TEMP_ENV" 2>/dev/null || \
+      sed -i '' "s|^REFRESH_TOKEN=.*|REFRESH_TOKEN=$OLD_REFRESH_TOKEN|" "$TEMP_ENV"
+    fi
+    if [ -n "$OLD_GAME_ID" ] && [ "$OLD_GAME_ID" != "paste-game-id-here" ]; then
+      sed -i.bak "s|^GAME_ID=.*|GAME_ID=$OLD_GAME_ID|" "$TEMP_ENV" 2>/dev/null || \
+      sed -i '' "s|^GAME_ID=.*|GAME_ID=$OLD_GAME_ID|" "$TEMP_ENV"
+    fi
+    if [ -n "$OLD_API_URL" ]; then
+      sed -i.bak "s|^API_URL=.*|API_URL=$OLD_API_URL|" "$TEMP_ENV" 2>/dev/null || \
+      sed -i '' "s|^API_URL=.*|API_URL=$OLD_API_URL|" "$TEMP_ENV"
+    fi
+    
+    # Remove backup files if created
+    rm -f "$TEMP_ENV.bak"
+    
+    # Replace .env with updated version
+    mv "$TEMP_ENV" "$ROOT_ENV"
+    echo "✓ Migrated tokens from .env.api-test to .env"
+    
+    # Optionally remove .env.api-test (user can delete manually if they want)
+    echo "  (You can now delete .env.api-test if you want - tokens are in .env)"
+  fi
 fi
-
-echo ""
-echo "----- .env.api-test -----"
-cat "$API_TEST_ENV"
-echo "--------------------------"
 
 echo ""
 echo "Building Next.js apps (npm install && npm run build)..."
@@ -197,15 +312,31 @@ run_step() {
   fi
 }
 
-# Set environment variables for builds from root .env file
+# Install dependencies first (without NODE_ENV=production to ensure devDependencies are installed)
+# Temporarily unset NODE_ENV if it's set to production
+OLD_NODE_ENV="$NODE_ENV"
+unset NODE_ENV
+run_step "app npm install" "$PROJECT_ROOT" "" npm install --legacy-peer-deps
+export NODE_ENV="$OLD_NODE_ENV"
+
+# Verify tailwindcss is installed
+if [ ! -d "$PROJECT_ROOT/node_modules/tailwindcss" ]; then
+  echo ""
+  echo "⚠️  tailwindcss not found after npm install, forcing reinstall..."
+  unset NODE_ENV
+  run_step "app npm install tailwindcss" "$PROJECT_ROOT" "" npm install --legacy-peer-deps 'tailwindcss@^3.4.0' postcss autoprefixer
+  export NODE_ENV="$OLD_NODE_ENV"
+fi
+
+# Clean .next directory to avoid stale build cache issues  
+run_step "app clean" "$PROJECT_ROOT" "" rm -rf .next
+
+# Set environment variables for build from root .env file
 set -a
 source "$ROOT_ENV"
 set +a
 
-run_step "scenario-editor npm install" "$PROJECT_ROOT/frontend/scenario-editor" "" npm install --silent
-run_step "scenario-editor build" "$PROJECT_ROOT/frontend/scenario-editor" "$ROOT_ENV" npm run build --silent
-run_step "game npm install" "$PROJECT_ROOT/frontend/game" "" npm install --silent
-run_step "game build" "$PROJECT_ROOT/frontend/game" "$ROOT_ENV" npm run build --silent
+run_step "app build" "$PROJECT_ROOT" "$ROOT_ENV" npm run build
 
 cd "$PROJECT_ROOT"
 
@@ -219,15 +350,14 @@ echo "Setup complete!"
 echo "=========================================="
 echo ""
 echo "Created/updated environment files:"
-echo "  • .env          - All environment variables for Docker Compose (build args + runtime)"
-echo "  • .env.api-test - REST Client test tokens"
+echo "  • .env - All environment variables (Docker Compose, AWS, DynamoDB, and API test tokens)"
 echo ""
 
 if [ -n "$COGNITO_POOL_ID" ] && [ -n "$COGNITO_CLIENT_ID" ]; then
   echo "✓ Cognito values populated from Terraform"
 else
   echo "⚠️  Cognito values not found - you may need to set them manually:"
-  echo "   Edit .env.scenario-editor and .env.game"
+  echo "   Edit .env and set COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, and COGNITO_DOMAIN"
 fi
 
 echo ""
