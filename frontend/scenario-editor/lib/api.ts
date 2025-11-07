@@ -29,6 +29,7 @@ export interface ScenariosResponse {
 
 /**
  * Get access token from Better Auth session (client-side)
+ * Returns the Cognito ID token for API authentication
  */
 async function getAccessToken(): Promise<string | null> {
   try {
@@ -38,11 +39,15 @@ async function getAccessToken(): Promise<string | null> {
     });
     if (response.ok) {
       const data = await response.json();
-      // Better Auth stores tokens in session.accessToken
-      return data.session?.accessToken || data.accessToken || null;
+      // Better Auth returns { data: { session, user }, error: null }
+      const sessionData = data?.data || data;
+      // The Cognito ID token is stored in session.idToken (from callbacks)
+      // The API authorizer expects the ID token
+      return sessionData?.session?.idToken || sessionData?.idToken || null;
     }
     return null;
   } catch (e) {
+    console.error('[API Client] Error getting access token:', e);
     return null;
   }
 }
@@ -58,9 +63,12 @@ async function apiRequest(
 ): Promise<any> {
   const url = `${API_BASE_URL}${path}`;
   
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+  const headers: Record<string, string> = {};
+  
+  // Only add Content-Type header for requests with a body
+  if (body) {
+    headers['Content-Type'] = 'application/json';
+  }
   
   // Use provided token or fetch from session
   const token = accessToken || await getAccessToken();
@@ -79,10 +87,24 @@ async function apiRequest(
     options.body = JSON.stringify(body);
   }
   
-  const response = await fetch(url, options);
+  let response: Response;
+  try {
+    response = await fetch(url, options);
+  } catch (error: any) {
+    // Network error (CORS, connection failed, etc.)
+    console.error('[API Client] Fetch error:', error);
+    throw new Error(`Network error: ${error.message || 'Failed to fetch'}`);
+  }
   
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+    console.error('[API Client] API error:', {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorData,
+      url,
+      hasToken: !!token,
+    });
     throw new Error(errorData.error || `API request failed: ${response.status} ${response.statusText}`);
   }
   

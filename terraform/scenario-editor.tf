@@ -91,16 +91,48 @@ resource "aws_cloudfront_distribution" "scenario_editor" {
 
   aliases = [local.editor_domain_name]
 
+  # Lambda Function URL origin (primary - for HTML/API routes)
   origin {
-    domain_name              = aws_s3_bucket.scenario_editor.bucket_regional_domain_name
-    origin_id                = "S3-${aws_s3_bucket.scenario_editor.id}"
-    origin_access_control_id = aws_cloudfront_origin_access_control.scenario_editor.id
+    domain_name = replace(replace(aws_lambda_function_url.scenario_editor.function_url, "https://", ""), "/", "")
+    origin_id   = "Lambda-ScenarioEditor"
+    custom_origin_config {
+      http_port              = 443
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
   }
 
+  # S3 origin for static assets
+  origin {
+    domain_name              = aws_s3_bucket.scenario_editor_static.bucket_regional_domain_name
+    origin_id                = "S3-Static-${aws_s3_bucket.scenario_editor_static.id}"
+    origin_access_control_id = aws_cloudfront_origin_access_control.scenario_editor_static.id
+  }
+
+  # Default behavior - Lambda origin (HTML/API routes)
   default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "S3-${aws_s3_bucket.scenario_editor.id}"
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "Lambda-ScenarioEditor"
+    viewer_protocol_policy = "redirect-to-https"
+    compress               = true
+
+    forwarded_values {
+      query_string = true
+      headers      = ["*"]
+      cookies {
+        forward = "all"
+      }
+    }
+  }
+
+  # Cache behavior for static assets
+  ordered_cache_behavior {
+    path_pattern     = "/_next/static/*"
+    allowed_methods = ["GET", "HEAD", "OPTIONS"]
+    cached_methods  = ["GET", "HEAD"]
+    target_origin_id = "S3-Static-${aws_s3_bucket.scenario_editor_static.id}"
 
     forwarded_values {
       query_string = false
@@ -111,8 +143,8 @@ resource "aws_cloudfront_distribution" "scenario_editor" {
 
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
+    default_ttl            = 31536000  # 1 year
+    max_ttl                = 31536000
     compress               = true
   }
 

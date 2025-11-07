@@ -51,9 +51,13 @@ resource "aws_cognito_user_pool_client" "web_client" {
     "ALLOW_USER_SRP_AUTH"
   ]
 
-  # Callback URLs - include auth proxy callback + any custom URLs
+  # Callback URLs - include Better Auth callback URLs
   callback_urls = concat(
-    ["https://${local.api_domain_name}/api-proxy/auth/callback"],
+    [
+      "https://${local.frontend_domain_name}/api/auth/callback/cognito",
+      "https://${local.editor_domain_name}/api/auth/callback/cognito",
+      "http://localhost:3000/api/auth/callback/cognito",
+    ],
     var.cognito_callback_urls
   )
   logout_urls = concat(

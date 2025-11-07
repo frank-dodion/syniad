@@ -24,9 +24,18 @@ echo ""
 echo -e "${GREEN}Stage: ${STAGE}${NC}"
 echo ""
 
-# Step 1: Build Lambda functions
+# Step 1: Build Next.js apps
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}Step 1: Building Lambda functions...${NC}"
+echo -e "${YELLOW}Step 1: Building Next.js applications...${NC}"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+cd "$PROJECT_ROOT"
+bash scripts/build-nextjs.sh
+bash scripts/package-nextjs-lambda.sh
+echo ""
+
+# Step 2: Build Lambda functions
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${YELLOW}Step 2: Building Lambda functions...${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 cd "$PROJECT_ROOT"
 npm run build:lambda
@@ -37,9 +46,9 @@ fi
 echo -e "${GREEN}✓ Lambda functions built${NC}"
 echo ""
 
-# Step 2: Apply Terraform
+# Step 3: Apply Terraform
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}Step 2: Applying Terraform infrastructure...${NC}"
+echo -e "${YELLOW}Step 3: Applying Terraform infrastructure...${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 cd "$PROJECT_ROOT/terraform"
 
@@ -58,28 +67,17 @@ fi
 echo -e "${GREEN}✓ Infrastructure updated${NC}"
 echo ""
 
-# Step 3: Deploy Scenario Editor
+# Step 4: Deploy static assets
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}Step 3: Deploying Scenario Editor...${NC}"
-echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-cd "$PROJECT_ROOT"
-./scripts/deploy-frontend.sh "$STAGE"
-if [ $? -ne 0 ]; then
-    echo -e "${RED}✗ Scenario Editor deployment failed${NC}"
-    exit 1
-fi
-echo ""
-
-# Step 4: Deploy Game App
-echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}Step 4: Deploying Game App...${NC}"
+echo -e "${YELLOW}Step 4: Deploying static assets to S3...${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 cd "$PROJECT_ROOT"
-./scripts/deploy-game.sh
+bash scripts/deploy-static-assets.sh "$STAGE"
 if [ $? -ne 0 ]; then
-    echo -e "${RED}✗ Game App deployment failed${NC}"
+    echo -e "${RED}✗ Static assets deployment failed${NC}"
     exit 1
 fi
+echo -e "${GREEN}✓ Static assets deployed${NC}"
 echo ""
 
 # Step 5: Summary

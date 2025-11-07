@@ -183,15 +183,7 @@ data "archive_file" "docs_lambda" {
   excludes = ["node_modules/.cache"]
 }
 
-data "archive_file" "auth_proxy_lambda" {
-  type        = "zip"
-  source_dir  = "${path.module}/../.build/lambda-packages/authProxy"
-  output_path = "${path.module}/lambda-zips/authProxy.zip"
-  
-  depends_on = [null_resource.build_lambda]
-  
-  excludes = ["node_modules/.cache"]
-}
+# Auth proxy Lambda removed - Better Auth handles authentication in Next.js apps
 
 # Build step - triggers when source files change
 # This builds ALL Lambda functions when any source code or configuration changes.
@@ -469,29 +461,5 @@ resource "aws_lambda_function" "authorizer" {
   tags = local.common_tags
 }
 
-# Auth Proxy Lambda function
-resource "aws_lambda_function" "auth_proxy" {
-  filename         = data.archive_file.auth_proxy_lambda.output_path
-  function_name    = "${local.service_name}-auth-proxy"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "index.handler"
-  runtime         = "nodejs20.x"
-  timeout         = 30
-  memory_size     = 256
-  source_code_hash = data.archive_file.auth_proxy_lambda.output_base64sha256
-
-  environment {
-    variables = {
-      USER_POOL_ID = aws_cognito_user_pool.users.id
-      USER_POOL_CLIENT_ID = aws_cognito_user_pool_client.web_client.id
-      API_BASE_URL = "https://${local.api_domain_name}"
-      COGNITO_DOMAIN = aws_cognito_user_pool_domain.auth_domain.domain
-      COGNITO_REGION = var.aws_region
-      FRONTEND_DOMAIN = local.frontend_domain_name
-      EDITOR_DOMAIN = local.editor_domain_name
-    }
-  }
-
-  tags = local.common_tags
-}
+# Auth Proxy Lambda removed - Better Auth handles authentication in Next.js apps
 

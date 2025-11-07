@@ -1,18 +1,11 @@
-/**
- * Client-side authentication utilities using Better Auth
- */
+'use client';
 
 import { createAuthClient } from "better-auth/react";
+import { useState, useEffect } from "react";
 
-const baseURL = typeof window !== 'undefined' 
-  ? window.location.origin 
-  : process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
-
-export const authClient = createAuthClient({
-  baseURL,
+const authClient = createAuthClient({
+  baseURL: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
 });
-
-export const { signIn, signOut, useSession } = authClient;
 
 export interface User {
   userId: string;
@@ -21,18 +14,30 @@ export interface User {
 }
 
 /**
- * Get user info from client-side (using Better Auth session)
+ * Get user info from client-side (using Better Auth)
+ * This is a React hook - must be called from a React component
  */
 export function useAuth() {
-  const { data: session, isPending } = useSession();
-  
+  const [session, setSession] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    authClient.getSession().then((s) => {
+      setSession(s);
+      setIsLoading(false);
+    }).catch(() => {
+      setSession(null);
+      setIsLoading(false);
+    });
+  }, []);
+
   return {
     user: session?.user ? {
       userId: session.user.id || '',
       username: session.user.name || session.user.email || '',
       email: session.user.email,
     } as User : null,
-    isLoading: isPending,
+    isLoading,
     isAuthenticated: !!session?.user,
     session,
   };
@@ -42,66 +47,44 @@ export function useAuth() {
  * Get user info from client-side
  */
 export async function getUserInfo(): Promise<User | null> {
-  try {
-    const response = await fetch('/api/auth/get-session', {
-      credentials: 'include',
-      cache: 'no-store',
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      if (data.user) {
-        return {
-          userId: data.user.id || '',
-          username: data.user.name || data.user.email || '',
-          email: data.user.email,
-        };
-      }
-    }
-    return null;
-  } catch (e) {
-    console.error('Error getting user info:', e);
-    return null;
+  const session = await authClient.getSession();
+  if (session?.user) {
+    return {
+      userId: session.user.id || '',
+      username: session.user.name || session.user.email || '',
+      email: session.user.email,
+    };
   }
+  return null;
 }
 
 /**
  * Check if user is authenticated (client-side)
  */
 export async function isAuthenticated(): Promise<boolean> {
-  try {
-    const response = await fetch('/api/auth/get-session', {
-      credentials: 'include',
-      cache: 'no-store',
-    });
-    if (response.ok) {
-      const data = await response.json();
-      return !!data.user;
-    }
-    return false;
-  } catch (e) {
-    return false;
-  }
+  const user = await getUserInfo();
+  return !!user;
 }
 
 /**
- * Login - redirect to Better Auth Cognito sign in
+ * Login - redirects to Cognito authentication
+ * This is the only authentication method available (Cognito only)
  */
-export function login(redirectUri?: string) {
-  signIn.social({
+export async function login(redirectUri?: string) {
+  await authClient.signIn.social({
     provider: "cognito",
-    callbackURL: redirectUri || window.location.href,
+    callbackURL: redirectUri || window.location.origin + window.location.pathname,
   });
 }
 
 /**
  * Logout
  */
-export function logout() {
-  signOut({
+export async function logout() {
+  await authClient.signOut({
     fetchOptions: {
       onSuccess: () => {
-        window.location.href = window.location.href;
+        window.location.href = window.location.origin;
       },
     },
   });

@@ -84,3 +84,23 @@ output "scenario_editor_cloudfront_distribution_id" {
   value       = aws_cloudfront_distribution.scenario_editor.id
 }
 
+output "scenario_editor_static_bucket_name" {
+  description = "S3 bucket name for scenario editor static assets"
+  value       = aws_s3_bucket.scenario_editor_static.id
+}
+
+output "game_static_bucket_name" {
+  description = "S3 bucket name for game app static assets"
+  value       = aws_s3_bucket.game_static.id
+}
+
+output "scenario_editor_lambda_function_url" {
+  description = "Lambda Function URL for scenario editor"
+  value       = aws_lambda_function_url.scenario_editor.function_url
+}
+
+output "game_lambda_function_url" {
+  description = "Lambda Function URL for game app"
+  value       = aws_lambda_function_url.game.function_url
+}
+
