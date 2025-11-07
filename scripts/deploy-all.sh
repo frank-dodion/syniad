@@ -33,18 +33,18 @@ bash scripts/build-nextjs.sh
 bash scripts/package-nextjs-lambda.sh
 echo ""
 
-# Step 2: Build Lambda functions
-echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}Step 2: Building Lambda functions...${NC}"
-echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-cd "$PROJECT_ROOT"
-npm run build:lambda
-if [ $? -ne 0 ]; then
-    echo -e "${RED}✗ Lambda build failed${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✓ Lambda functions built${NC}"
-echo ""
+# Step 2: Build Lambda functions (skipped - API routes are now in Next.js app)
+# echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+# echo -e "${YELLOW}Step 2: Building Lambda functions...${NC}"
+# echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+# cd "$PROJECT_ROOT"
+# npm run build:lambda
+# if [ $? -ne 0 ]; then
+#     echo -e "${RED}✗ Lambda build failed${NC}"
+#     exit 1
+# fi
+# echo -e "${GREEN}✓ Lambda functions built${NC}"
+# echo ""
 
 # Step 3: Apply Terraform
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

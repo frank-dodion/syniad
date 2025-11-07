@@ -69,7 +69,7 @@ resource "aws_lambda_function" "scenario_editor" {
   environment {
     variables = {
       PORT                    = "8080"
-      NEXT_PUBLIC_API_URL     = "https://${local.api_domain_name}"
+      NEXT_PUBLIC_API_URL     = "https://${local.frontend_domain_name}" # API routes are now in the game app
       NEXT_PUBLIC_FRONTEND_URL = "https://${local.editor_domain_name}"
       # NEXT_PUBLIC_ASSET_PREFIX is a build-time variable, already embedded in Docker image
       # No need to set it as runtime environment variable (would create circular dependency)
@@ -105,7 +105,7 @@ resource "aws_lambda_function" "game" {
   environment {
     variables = {
       PORT                    = "8080"
-      NEXT_PUBLIC_API_URL     = "https://${local.api_domain_name}"
+      NEXT_PUBLIC_API_URL     = "https://${local.frontend_domain_name}" # API routes are now in the game app
       NEXT_PUBLIC_FRONTEND_URL = "https://${local.frontend_domain_name}"
       # NEXT_PUBLIC_ASSET_PREFIX is a build-time variable, already embedded in Docker image
       # No need to set it as runtime environment variable (would create circular dependency)
@@ -116,6 +116,11 @@ resource "aws_lambda_function" "game" {
       COGNITO_CLIENT_SECRET   = "" # Public client, no secret needed
       COGNITO_REGION          = var.aws_region
       COGNITO_DOMAIN          = "${aws_cognito_user_pool_domain.auth_domain.domain}.auth.${var.aws_region}.amazoncognito.com"
+      # DynamoDB table names for API routes
+      GAMES_TABLE             = aws_dynamodb_table.games.name
+      PLAYER_GAMES_TABLE      = aws_dynamodb_table.player_games.name
+      SCENARIOS_TABLE         = aws_dynamodb_table.scenarios.name
+      AWS_REGION              = var.aws_region
     }
   }
 

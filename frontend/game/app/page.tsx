@@ -46,7 +46,7 @@ export default function HomePage() {
         <p>This is a placeholder for the main game application.</p>
         <p>
           <a href="https://editor.dev.syniad.net" className="link">Scenario Editor</a> |
-          <a href="https://dev.api.syniad.net/docs" className="link">API Docs</a>
+          <a href="/api/docs" className="link">API Docs</a>
         </p>
       </div>
     </div>

@@ -5,7 +5,8 @@
 
 import { createAuthClient } from "better-auth/react";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dev.api.syniad.net';
+// API is now in the game app - use the game app's domain
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dev.syniad.net';
 
 // Better Auth client for getting session tokens
 const authClient = typeof window !== 'undefined' 
@@ -148,7 +149,7 @@ export async function getAllScenarios(
   nextToken?: string | null,
   accessToken?: string | null
 ): Promise<ScenariosResponse> {
-  let path = `/scenarios?limit=${limit}`;
+  let path = `/api/scenarios?limit=${limit}`;
   if (nextToken) {
     path += `&nextToken=${encodeURIComponent(nextToken)}`;
   }
@@ -159,14 +160,14 @@ export async function getAllScenarios(
  * Get a specific scenario by ID
  */
 export async function getScenario(scenarioId: string, accessToken?: string | null): Promise<{ scenario: Scenario }> {
-  return await apiRequest('GET', `/scenarios/${scenarioId}`, undefined, accessToken);
+  return await apiRequest('GET', `/api/scenarios/${scenarioId}`, undefined, accessToken);
 }
 
 /**
  * Create a new scenario
  */
 export async function createScenario(scenarioData: Omit<Scenario, 'scenarioId' | 'createdAt'>, accessToken?: string | null): Promise<{ scenario: Scenario }> {
-  return await apiRequest('POST', '/scenarios', scenarioData, accessToken);
+  return await apiRequest('POST', '/api/scenarios', scenarioData, accessToken);
 }
 
 /**
@@ -177,13 +178,13 @@ export async function updateScenario(
   scenarioData: Partial<Scenario>,
   accessToken?: string | null
 ): Promise<{ scenario: Scenario }> {
-  return await apiRequest('PUT', `/scenarios/${scenarioId}`, scenarioData, accessToken);
+  return await apiRequest('PUT', `/api/scenarios/${scenarioId}`, scenarioData, accessToken);
 }
 
 /**
  * Delete a scenario
  */
 export async function deleteScenario(scenarioId: string, accessToken?: string | null): Promise<void> {
-  return await apiRequest('DELETE', `/scenarios/${scenarioId}`, undefined, accessToken);
+  return await apiRequest('DELETE', `/api/scenarios/${scenarioId}`, undefined, accessToken);
 }
 
