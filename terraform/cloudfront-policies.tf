@@ -1,4 +1,5 @@
 # CloudFront Cache Policy - no caching for API routes
+# When caching is disabled (TTL=0), header behavior must be "none"
 resource "aws_cloudfront_cache_policy" "no_cache" {
   name        = "${local.service_name}-no-cache"
   comment     = "No caching policy for API routes"
@@ -15,10 +16,7 @@ resource "aws_cloudfront_cache_policy" "no_cache" {
     }
 
     headers_config {
-      header_behavior = "whitelist"
-      headers {
-        items = ["Authorization", "CloudFront-Forwarded-Proto", "CloudFront-Is-Desktop-Viewer", "CloudFront-Is-Mobile-Viewer", "CloudFront-Is-SmartTV-Viewer", "CloudFront-Is-Tablet-Viewer", "CloudFront-Viewer-Country"]
-      }
+      header_behavior = "none"  # Required when caching is disabled
     }
 
     query_strings_config {
@@ -29,19 +27,18 @@ resource "aws_cloudfront_cache_policy" "no_cache" {
 
 # CloudFront Origin Request Policy - forward all headers except Host
 # CloudFront automatically sets Host to origin domain, so we don't forward the viewer's Host header
+# Note: Authorization header is automatically forwarded when using "allViewer" behavior
 resource "aws_cloudfront_origin_request_policy" "forward_all_except_host" {
   name    = "${local.service_name}-forward-all-except-host"
-  comment = "Forward all headers except Host (which CloudFront sets automatically)"
+  comment = "Forward all viewer headers except Host (which CloudFront sets automatically)"
 
   cookies_config {
     cookie_behavior = "all"
   }
 
   headers_config {
-    header_behavior = "whitelist"
-    headers {
-      items = ["Authorization", "CloudFront-Forwarded-Proto", "CloudFront-Is-Desktop-Viewer", "CloudFront-Is-Mobile-Viewer", "CloudFront-Is-SmartTV-Viewer", "CloudFront-Is-Tablet-Viewer", "CloudFront-Viewer-Country"]
-    }
+    header_behavior = "allViewer"  # Forwards all viewer headers (including Authorization)
+    # CloudFront automatically sets Host to origin domain, so we don't need to whitelist it
   }
 
   query_strings_config {
