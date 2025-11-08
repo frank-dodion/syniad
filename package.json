@@ -1,41 +1,42 @@
 {
-  "name": "syniad",
+  "name": "game",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "lib": "lib"
-  },
+  "private": true,
   "scripts": {
-    "build": "tsc",
-    "build:lambda": "bash scripts/build-lambda.sh",
-    "typecheck": "tsc --noEmit",
-    "dev": "npm run build && node scripts/local-server.js",
-    "terraform:init": "cd terraform && terraform init",
-    "terraform:plan": "cd terraform && terraform plan",
-    "terraform:apply": "cd terraform && terraform apply",
-    "terraform:destroy": "cd terraform && terraform destroy",
-    "terraform:output": "cd terraform && terraform output",
-    "terraform:workspace": "cd terraform && terraform workspace",
-    "workspace:dev": "cd terraform && terraform workspace select dev || terraform workspace new dev",
-    "workspace:prod": "cd terraform && terraform workspace select prod || terraform workspace new prod",
-    "deploy": "npm run build:lambda && cd terraform && terraform workspace select dev && terraform apply -var='stage=dev' -auto-approve",
-    "deploy:dev": "npm run build:lambda && npm run workspace:dev && cd terraform && terraform apply -var='stage=dev' -auto-approve",
-    "deploy:prod": "npm run build:lambda && npm run workspace:prod && cd terraform && terraform apply -var='stage=prod' -auto-approve"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "deploy:dev": "bash scripts/deploy-all.sh dev",
+    "deploy:prod": "bash scripts/deploy-all.sh prod",
+    "cleanup:dev": "bash scripts/cleanup-orphaned-resources.sh dev",
+    "cleanup:prod": "bash scripts/cleanup-orphaned-resources.sh prod",
+    "invalidate-cache:dev": "bash scripts/invalidate-cloudfront-cache.sh dev",
+    "invalidate-cache:prod": "bash scripts/invalidate-cloudfront-cache.sh prod",
+    "test-lambda-url:dev": "bash scripts/test-lambda-function-url.sh dev"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.922.0",
     "@aws-sdk/lib-dynamodb": "^3.922.0",
-    "uuid": "^9.0.1"
+    "@ts-rest/core": "^3.52.1",
+    "@ts-rest/open-api": "^3.52.1",
+    "better-auth": "^1.3.34",
+    "next": "16.0.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "uuid": "^9.0.1",
+    "zod": "^3.22.3"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.157",
-    "@types/node": "^24.9.2",
+    "@types/node": "20.19.24",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "^19",
     "@types/uuid": "^9.0.8",
-    "typescript": "^5.9.3"
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.18",
+    "typescript": "5.9.3"
   }
 }

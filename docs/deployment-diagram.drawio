@@ -1,0 +1,248 @@
+<mxfile host="app.diagrams.net" modified="2024-11-07T00:00:00.000Z" agent="5.0" version="21.0.0" etag="drawio-diagram" type="device">
+  <diagram name="Syniad Deployment Architecture" id="syniad-deployment">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- AWS Icon Library Reference -->
+        <mxCell id="aws-library" value="" style="sketch=0;points=[];verticalLabelPosition=bottom;html=1;verticalAlign=top;aspect=fixed;align=center;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="0" y="0" width="1" height="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Users -->
+        <mxCell id="user" value="Web Browser" style="sketch=0;points=[];verticalLabelPosition=bottom;html=1;verticalAlign=top;aspect=fixed;align=center;fillColor=none;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="50" width="120" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- CloudFront Distributions -->
+        <mxCell id="cf-editor" value="CloudFront&#xa;editor.dev.syniad.net" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.cloudfront_distribution;" vertex="1" parent="1">
+          <mxGeometry x="250" y="30" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="cf-game" value="CloudFront&#xa;dev.syniad.net" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.cloudfront_distribution;" vertex="1" parent="1">
+          <mxGeometry x="250" y="130" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <!-- S3 Buckets -->
+        <mxCell id="s3-editor" value="S3 Bucket&#xa;scenario-editor" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#759C3E;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.s3;" vertex="1" parent="1">
+          <mxGeometry x="400" y="30" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="s3-game" value="S3 Bucket&#xa;game" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#759C3E;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.s3;" vertex="1" parent="1">
+          <mxGeometry x="400" y="130" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <!-- Lambda Functions (Frontend) -->
+        <mxCell id="lambda-editor" value="Lambda&#xa;scenario-editor&#xa;provided.al2023" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#F58534;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.lambda;" vertex="1" parent="1">
+          <mxGeometry x="550" y="30" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lambda-game" value="Lambda&#xa;game&#xa;provided.al2023" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#F58534;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.lambda;" vertex="1" parent="1">
+          <mxGeometry x="550" y="130" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <!-- Lambda Layer -->
+        <mxCell id="web-adapter" value="Lambda Layer&#xa;Web Adapter v21" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#F58534;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.lambda_function;" vertex="1" parent="1">
+          <mxGeometry x="700" y="80" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <!-- Cognito -->
+        <mxCell id="cognito" value="Cognito&#xa;User Pool" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#7AA116;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.cognito;" vertex="1" parent="1">
+          <mxGeometry x="850" y="30" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="cognito-domain" value="Cognito Domain&#xa;syniad-dev-auth-dev" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#7AA116;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.cognito;" vertex="1" parent="1">
+          <mxGeometry x="850" y="130" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <!-- Better Auth (Custom Component) -->
+        <mxCell id="ba-editor" value="Better Auth&#xa;scenario-editor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="30" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="ba-game" value="Better Auth&#xa;game" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="110" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- API Gateway -->
+        <mxCell id="apigw" value="API Gateway&#xa;HTTP API&#xa;dev.api.syniad.net" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.api_gateway;" vertex="1" parent="1">
+          <mxGeometry x="250" y="300" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <!-- Lambda Authorizer -->
+        <mxCell id="authorizer" value="Lambda Authorizer&#xa;Validates JWT" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#F58534;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.lambda;" vertex="1" parent="1">
+          <mxGeometry x="400" y="300" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <!-- Backend Lambda Functions -->
+        <mxCell id="lambda-scenarios" value="Lambda&#xa;Scenarios&#xa;CRUD" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#F58534;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.lambda;" vertex="1" parent="1">
+          <mxGeometry x="250" y="450" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lambda-games" value="Lambda&#xa;Games&#xa;CRUD" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#F58534;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.lambda;" vertex="1" parent="1">
+          <mxGeometry x="400" y="450" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lambda-docs" value="Lambda&#xa;Docs&#xa;Swagger" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#F58534;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.lambda;" vertex="1" parent="1">
+          <mxGeometry x="550" y="450" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <!-- DynamoDB -->
+        <mxCell id="ddb-scenarios" value="DynamoDB&#xa;scenarios" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#5294CF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.dynamodb;" vertex="1" parent="1">
+          <mxGeometry x="250" y="600" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="ddb-games" value="DynamoDB&#xa;games" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#5294CF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.dynamodb;" vertex="1" parent="1">
+          <mxGeometry x="400" y="600" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="ddb-player-games" value="DynamoDB&#xa;player-games" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#5294CF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.dynamodb;" vertex="1" parent="1">
+          <mxGeometry x="550" y="600" width="78" height="78" as="geometry" />
+        </mxCell>
+        
+        <!-- Connections -->
+        <!-- User to CloudFront -->
+        <mxCell id="edge1" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="user" target="cf-editor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge2" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="user" target="cf-game">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- CloudFront to S3 -->
+        <mxCell id="edge3" value="OAC" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="cf-editor" target="s3-editor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge4" value="OAC" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="cf-game" target="s3-game">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- CloudFront to Lambda (dashed for API routes) -->
+        <mxCell id="edge5" value="API Routes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="cf-editor" target="lambda-editor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge6" value="API Routes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="cf-game" target="lambda-game">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Lambda to Web Adapter -->
+        <mxCell id="edge7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="lambda-editor" target="web-adapter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="lambda-game" target="web-adapter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Better Auth to Cognito -->
+        <mxCell id="edge9" value="OAuth 2.0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="ba-editor" target="cognito">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge10" value="OAuth 2.0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="ba-game" target="cognito">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="cognito" target="cognito-domain">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Better Auth to API Gateway -->
+        <mxCell id="edge12" value="Bearer Token" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="ba-editor" target="apigw">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1060" y="200" />
+              <mxPoint x="289" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="edge13" value="Bearer Token" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="ba-game" target="apigw">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1060" y="200" />
+              <mxPoint x="289" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- API Gateway to Authorizer -->
+        <mxCell id="edge14" value="Validates JWT" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="apigw" target="authorizer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Authorizer to Cognito -->
+        <mxCell id="edge15" value="Validates with" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="authorizer" target="cognito">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="439" y="200" />
+              <mxPoint x="889" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Authorizer back to API Gateway -->
+        <mxCell id="edge16" value="Allow/Deny" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="authorizer" target="apigw">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="439" y="400" />
+              <mxPoint x="289" y="400" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- API Gateway to Backend Lambdas -->
+        <mxCell id="edge17" value="Authorized" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="apigw" target="lambda-scenarios">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge18" value="Authorized" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="apigw" target="lambda-games">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge19" value="Public" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="apigw" target="lambda-docs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Backend Lambdas to DynamoDB -->
+        <mxCell id="edge20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="lambda-scenarios" target="ddb-scenarios">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="lambda-games" target="ddb-games">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="lambda-games" target="ddb-player-games">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Layer Labels -->
+        <mxCell id="label-frontend" value="Frontend Layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="250" y="0" width="150" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="label-auth" value="Authentication Layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="850" y="0" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="label-api" value="API Layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="250" y="250" width="150" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="label-backend" value="Backend Layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="250" y="400" width="150" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="label-data" value="Data Layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="250" y="550" width="150" height="30" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

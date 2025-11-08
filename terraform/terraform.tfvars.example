@@ -1,0 +1,13 @@
+# Copy this file to terraform.tfvars and customize
+
+aws_region = "us-east-1"
+stage      = "dev"
+project_name = "syniad"
+
+# CORS Configuration
+# cors_allowed_origins = ["https://yourdomain.com", "https://app.yourdomain.com"]
+
+# Cognito Configuration (for user authentication)
+# cognito_callback_urls = ["https://yourdomain.com/callback", "http://localhost:3000/callback"]
+# cognito_logout_urls = ["https://yourdomain.com", "http://localhost:3000"]
+

@@ -1,0 +1,62 @@
+### Test Endpoint - Verify authentication works
+### Variables loaded from .env file (gitignored, safe for tokens)
+### Pre-request script reads .env file before every request (no caching!)
+
+< {%
+    // Pre-request script: Read .env file and load variables before EVERY request
+    // This runs fresh each time to avoid any caching issues
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Find .env file in workspace root (up from api-tests/)
+    // Use realpathSync to ensure we get the actual file path
+    const scriptDir = path.dirname(process.env.REST_CLIENT_FILE || __dirname || '');
+    const workspaceRoot = path.resolve(scriptDir, '..');
+    const envPath = path.join(workspaceRoot, '.env');
+    
+    // Force fresh read - clear cache by using realpath and reading directly
+    let envPathResolved;
+    try {
+        envPathResolved = fs.realpathSync(envPath);
+    } catch (e) {
+        envPathResolved = envPath;
+    }
+    
+    if (fs.existsSync(envPathResolved)) {
+        // Read file fresh - no caching
+        const envContent = fs.readFileSync(envPathResolved, 'utf8');
+        const lines = envContent.split('\n');
+        
+        let tokenFound = false;
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            // Skip comments and empty lines
+            if (trimmed && !trimmed.startsWith('#')) {
+                const match = trimmed.match(/^([A-Z_]+)=(.+)$/);
+                if (match) {
+                    const key = match[1];
+                    const value = match[2].trim();
+                    // Set as global variable for use in request
+                    client.global.set(key, value);
+                    if (key === 'ID_TOKEN') {
+                        tokenFound = true;
+                        // Log token info (first/last 20 chars for debugging, not full token)
+                        const tokenPreview = value.length > 40 
+                            ? value.substring(0, 20) + '...' + value.substring(value.length - 20)
+                            : value.substring(0, 20) + '...';
+                        client.log(`[PRE-REQUEST] Loaded ID_TOKEN from .env: ${tokenPreview} (length: ${value.length})`);
+                    }
+                }
+            }
+        });
+        
+        if (!tokenFound) {
+            client.log('[PRE-REQUEST] WARNING: ID_TOKEN not found in .env file!');
+        }
+    } else {
+        client.log(`[PRE-REQUEST] ERROR: .env file not found at ${envPathResolved}`);
+    }
+%}
+
+GET {{API_URL}}/test
+Authorization: Bearer {{ID_TOKEN}}

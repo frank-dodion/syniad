@@ -34,3 +34,21 @@ variable "domain_name" {
   default     = "syniad.net"
 }
 
+variable "cors_allowed_origins" {
+  description = "Allowed CORS origins (comma-separated list)"
+  type        = list(string)
+  default     = ["*"]
+}
+
+variable "cognito_callback_urls" {
+  description = "Allowed callback URLs for Cognito OAuth (e.g., https://yourdomain.com/callback)"
+  type        = list(string)
+  default     = ["http://localhost:3000/callback"]
+}
+
+variable "cognito_logout_urls" {
+  description = "Allowed logout URLs for Cognito"
+  type        = list(string)
+  default     = ["http://localhost:3000"]
+}
+

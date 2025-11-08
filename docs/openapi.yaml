@@ -1,0 +1,1097 @@
+openapi: 3.0.3
+info:
+  title: Syniad API
+  description: API for managing game sessions
+  version: 1.0.0
+servers:
+  - url: https://api.syniad.com
+    description: API Server
+tags:
+  - name: Games
+    description: Game management operations
+  - name: Test
+    description: Test endpoint
+  - name: Docs
+    description: API documentation
+paths:
+  /test:
+    get:
+      operationId: getTest
+      tags:
+        - Test
+      summary: Test endpoint
+      description: Returns a test message with user information
+      parameters: []
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+                  user:
+                    $ref: "#/components/schemas/User"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games:
+    post:
+      operationId: createGame
+      tags:
+        - Games
+      summary: Create a new game
+      description: Creates a new game with the authenticated user as player1. Requires scenarioId in request body
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - scenarioId
+              properties:
+                scenarioId:
+                  type: string
+                  format: uuid
+                  description: ID of the scenario to use for this game
+    get:
+      operationId: getAllGames
+      tags:
+        - Games
+      summary: Get all games
+      description: Retrieves all games with pagination support
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamesResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games/{gameId}/join:
+    post:
+      operationId: joinGame
+      tags:
+        - Games
+      summary: Join a game
+      description: Joins an existing game as player2
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: Unique identifier for the game
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JoinGameResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games/{gameId}:
+    get:
+      operationId: getGame
+      tags:
+        - Games
+      summary: Get a specific game
+      description: Retrieves details for a specific game by ID
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: Unique identifier for the game
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+    delete:
+      operationId: deleteGame
+      tags:
+        - Games
+      summary: Delete a game
+      description: Deletes a game. Only Player 1 (the creator) can delete the game
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: Unique identifier for the game
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Forbidden - Only Player 1 (the creator) can delete the game
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  gameId:
+                    type: string
+                  user:
+                    $ref: "#/components/schemas/User"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /scenarios:
+    post:
+      operationId: createScenario
+      tags:
+        - General
+      summary: Create a scenario
+      description: Creates a new scenario. Hexes are optional - omitted hexes default to clear terrain
+      parameters: []
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scenarioId:
+                    type: string
+                    format: uuid
+                  scenario:
+                    type: object
+                    properties:
+                      scenarioId:
+                        type: string
+                        format: uuid
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      columns:
+                        type: integer
+                      rows:
+                        type: integer
+                      turns:
+                        type: integer
+                      hexes:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            row:
+                              type: integer
+                            column:
+                              type: integer
+                            terrain:
+                              type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+                  user:
+                    $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - description
+                - columns
+                - rows
+                - turns
+              properties:
+                title:
+                  type: string
+                  description: Scenario title
+                description:
+                  type: string
+                  description: Scenario description
+                columns:
+                  type: integer
+                  minimum: 1
+                  description: Number of columns in the game map
+                rows:
+                  type: integer
+                  minimum: 1
+                  description: Number of rows in the game map
+                turns:
+                  type: integer
+                  minimum: 1
+                  description: Number of turns in the scenario
+                hexes:
+                  type: array
+                  description: "Optional array of hex terrain definitions. If omitted, a complete grid of clear terrain hexes will be generated for all rows and columns. Format: [{row: number, column: number, terrain: string}]"
+                  items:
+                    type: object
+                    required:
+                      - row
+                      - column
+                      - terrain
+                    properties:
+                      row:
+                        type: integer
+                        minimum: 0
+                        description: Row index (0-based)
+                      column:
+                        type: integer
+                        minimum: 0
+                        description: Column index (0-based)
+                      terrain:
+                        type: string
+                        enum:
+                          - clear
+                          - mountain
+                          - forest
+                          - water
+                          - desert
+                          - swamp
+                        description: Terrain type for this hex
+                  example:
+                    - row: 0
+                      column: 0
+                      terrain: clear
+                    - row: 1
+                      column: 2
+                      terrain: mountain
+                    - row: 5
+                      column: 7
+                      terrain: forest
+              example:
+                title: Eastern Front 1942
+                description: A scenario set on the Eastern Front with varied terrain
+                columns: 12
+                rows: 10
+                turns: 15
+                hexes:
+                  - row: 0
+                    column: 0
+                    terrain: clear
+                  - row: 0
+                    column: 1
+                    terrain: clear
+                  - row: 2
+                    column: 3
+                    terrain: mountain
+                  - row: 4
+                    column: 5
+                    terrain: forest
+                  - row: 6
+                    column: 7
+                    terrain: water
+    get:
+      operationId: getAllScenarios
+      tags:
+        - General
+      summary: Get all scenarios
+      description: Retrieves all scenarios with pagination support
+      parameters: []
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scenarios:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        scenarioId:
+                          type: string
+                          format: uuid
+                        title:
+                          type: string
+                        description:
+                          type: string
+                        columns:
+                          type: integer
+                        rows:
+                          type: integer
+                        turns:
+                          type: integer
+                        hexes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              row:
+                                type: integer
+                              column:
+                                type: integer
+                              terrain:
+                                type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+                        updatedAt:
+                          type: string
+                          format: date-time
+                  count:
+                    type: integer
+                  hasMore:
+                    type: boolean
+                  nextToken:
+                    type: string
+                  user:
+                    $ref: "#/components/schemas/User"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /scenarios/{scenarioId}:
+    get:
+      operationId: getScenario
+      tags:
+        - General
+      summary: Get a scenario
+      description: Retrieves a specific scenario by ID
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          description: Unique identifier for the scenario
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scenarioId:
+                    type: string
+                    format: uuid
+                  scenario:
+                    type: object
+                    properties:
+                      scenarioId:
+                        type: string
+                        format: uuid
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      columns:
+                        type: integer
+                      rows:
+                        type: integer
+                      turns:
+                        type: integer
+                      hexes:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            row:
+                              type: integer
+                            column:
+                              type: integer
+                            terrain:
+                              type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
+                  user:
+                    $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+    put:
+      operationId: updateScenario
+      tags:
+        - General
+      summary: Update a scenario
+      description: Updates an existing scenario. All fields are optional
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          description: Unique identifier for the scenario
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scenarioId:
+                    type: string
+                    format: uuid
+                  scenario:
+                    type: object
+                    properties:
+                      scenarioId:
+                        type: string
+                        format: uuid
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      columns:
+                        type: integer
+                      rows:
+                        type: integer
+                      turns:
+                        type: integer
+                      hexes:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            row:
+                              type: integer
+                            column:
+                              type: integer
+                            terrain:
+                              type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
+                  user:
+                    $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: All fields are optional. Only provided fields will be updated.
+              properties:
+                title:
+                  type: string
+                  description: Scenario title
+                description:
+                  type: string
+                  description: Scenario description
+                columns:
+                  type: integer
+                  minimum: 1
+                  description: Number of columns in the game map
+                rows:
+                  type: integer
+                  minimum: 1
+                  description: Number of rows in the game map
+                turns:
+                  type: integer
+                  minimum: 1
+                  description: Number of turns in the scenario
+                hexes:
+                  type:
+                    - array
+                    - "null"
+                  description: "Array of hex terrain definitions, or null to clear. Format: [{row: number, column: number, terrain: string}]"
+                  items:
+                    type: object
+                    required:
+                      - row
+                      - column
+                      - terrain
+                    properties:
+                      row:
+                        type: integer
+                        minimum: 0
+                        description: Row index (0-based)
+                      column:
+                        type: integer
+                        minimum: 0
+                        description: Column index (0-based)
+                      terrain:
+                        type: string
+                        enum:
+                          - clear
+                          - mountain
+                          - forest
+                          - water
+                          - desert
+                          - swamp
+                        description: Terrain type for this hex
+    delete:
+      operationId: deleteScenario
+      tags:
+        - General
+      summary: Delete a scenario
+      description: Deletes a scenario
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          description: Unique identifier for the scenario
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Scenario deleted successfully
+                  scenarioId:
+                    type: string
+                    format: uuid
+                  user:
+                    $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games/my:
+    get:
+      operationId: getMyGames
+      tags:
+        - Games
+      summary: Get my games
+      description: Retrieves all games for the authenticated user (games where they are player1 or player2)
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamesResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games/my/player1:
+    get:
+      operationId: getMyGamesAsPlayer1
+      tags:
+        - Games
+      summary: Get my games as player1
+      description: Retrieves all games where the authenticated user is player1 (games they created)
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamesResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games/my/player2:
+    get:
+      operationId: getMyGamesAsPlayer2
+      tags:
+        - Games
+      summary: Get my games as player2
+      description: Retrieves all games where the authenticated user is player2 (games they joined)
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamesResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games/players/{playerId}:
+    get:
+      operationId: getGamesByPlayer
+      tags:
+        - Games
+      summary: Get games for a player
+      description: Retrieves all games where the specified player is either player1 or player2
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          description: User ID (Cognito sub) of the player
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games/player1/{player1Id}:
+    get:
+      operationId: getGamesByPlayer1
+      tags:
+        - Games
+      summary: Get games created by player
+      description: Retrieves all games where the specified player is player1 (games they created)
+      parameters:
+        - name: player1Id
+          in: path
+          required: true
+          description: User ID (Cognito sub) of player1
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /games/player2/{player2Id}:
+    get:
+      operationId: getGamesByPlayer2
+      tags:
+        - Games
+      summary: Get games joined by player
+      description: Retrieves all games where the specified player is player2 (games they joined)
+      parameters:
+        - name: player2Id
+          in: path
+          required: true
+          description: User ID (Cognito sub) of player2
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return (1-100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+        - name: nextToken
+          in: query
+          required: false
+          description: Token for pagination (returned from previous request)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+      security:
+        - bearerAuth: []
+  /docs:
+    get:
+      operationId: getDocs
+      tags:
+        - Docs
+      summary: API documentation
+      description: Interactive API documentation (Swagger UI)
+      parameters: []
+      responses:
+        "200":
+          description: Successful response
+          content:
+            text/html:
+              schema:
+                type: string
+  /docs/openapi.yaml:
+    get:
+      operationId: getOpenAPISpec
+      tags:
+        - Docs
+      summary: OpenAPI specification
+      description: OpenAPI 3.0 specification in YAML format
+      parameters: []
+      responses:
+        "200":
+          description: Successful response
+          content:
+            text/yaml:
+              schema:
+                type: string
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from AWS Cognito
+  schemas:
+    Player:
+      type: object
+      required:
+        - name
+        - userId
+      properties:
+        name:
+          type: string
+          description: Player's display name
+        userId:
+          type: string
+          description: Cognito user ID (sub) - unique, immutable identifier
+    Game:
+      type: object
+      required:
+        - gameId
+        - status
+        - player1
+        - player1Id
+        - turnNumber
+        - createdAt
+      properties:
+        gameId:
+          type: string
+          format: uuid
+          description: Unique game identifier
+        status:
+          type: string
+          enum:
+            - waiting
+            - active
+            - finished
+          description: Current game status
+        player1:
+          $ref: "#/components/schemas/Player"
+        player2:
+          $ref: "#/components/schemas/Player"
+        player1Id:
+          type: string
+          description: Index field - equals player1.userId
+        player2Id:
+          type: string
+          description: Index field - equals player2.userId when player2 exists
+        turnNumber:
+          type: integer
+          description: Current turn number
+        createdAt:
+          type: string
+          format: date-time
+          description: Game creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Game last update timestamp
+    User:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: Cognito user ID
+        username:
+          type: string
+          description: Username
+        email:
+          type: string
+          format: email
+          description: User email
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        user:
+          $ref: "#/components/schemas/User"
+        details:
+          type: string
+          description: Additional error details
+    GameResponse:
+      type: object
+      properties:
+        gameId:
+          type: string
+          format: uuid
+        game:
+          $ref: "#/components/schemas/Game"
+        user:
+          $ref: "#/components/schemas/User"
+    JoinGameResponse:
+      allOf:
+        - $ref: "#/components/schemas/GameResponse"
+        - type: object
+          properties:
+            message:
+              type: string
+              example: Game is now active!
+    GamesResponse:
+      type: object
+      properties:
+        games:
+          type: array
+          items:
+            $ref: "#/components/schemas/Game"
+        count:
+          type: integer
+          description: Number of games in this response
+        hasMore:
+          type: boolean
+          description: Whether there are more games available
+        nextToken:
+          type: string
+          description: Token to fetch the next page of results
+        playerId:
+          type: string
+          description: Filter parameter used (when querying by player)
+        player1Id:
+          type: string
+          description: Filter parameter used (when querying by player1)
+        player2Id:
+          type: string
+          description: Filter parameter used (when querying by player2)
+        user:
+          $ref: "#/components/schemas/User"
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

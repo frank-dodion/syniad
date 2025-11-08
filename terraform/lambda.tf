@@ -34,11 +34,19 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
           "dynamodb:UpdateItem",
           "dynamodb:DeleteItem",
           "dynamodb:Query",
-          "dynamodb:Scan"
+          "dynamodb:Scan",
+          "dynamodb:BatchGetItem"
         ]
         Resource = [
           aws_dynamodb_table.games.arn,
-          "${aws_dynamodb_table.games.arn}/*"
+          "${aws_dynamodb_table.games.arn}/*",
+          "${aws_dynamodb_table.games.arn}/index/*",
+          aws_dynamodb_table.player_games.arn,
+          "${aws_dynamodb_table.player_games.arn}/*",
+          "${aws_dynamodb_table.player_games.arn}/index/*",
+          aws_dynamodb_table.scenarios.arn,
+          "${aws_dynamodb_table.scenarios.arn}/*",
+          "${aws_dynamodb_table.scenarios.arn}/index/*"
         ]
       },
       {
@@ -54,144 +62,16 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
   })
 }
 
-# Archive Lambda function code
-data "archive_file" "test_lambda" {
-  type        = "zip"
-  source_dir  = "${path.module}/../.build/lambda-packages/test"
-  output_path = "${path.module}/lambda-zips/test.zip"
-  
-  depends_on = [null_resource.build_lambda]
-  
-  excludes = ["node_modules/.cache"]
-}
-
-data "archive_file" "create_game_lambda" {
-  type        = "zip"
-  source_dir  = "${path.module}/../.build/lambda-packages/createGame"
-  output_path = "${path.module}/lambda-zips/createGame.zip"
-  
-  depends_on = [null_resource.build_lambda]
-  
-  excludes = ["node_modules/.cache"]
-}
-
-data "archive_file" "join_game_lambda" {
-  type        = "zip"
-  source_dir  = "${path.module}/../.build/lambda-packages/joinGame"
-  output_path = "${path.module}/lambda-zips/joinGame.zip"
-  
-  depends_on = [null_resource.build_lambda]
-  
-  excludes = ["node_modules/.cache"]
-}
-
-data "archive_file" "get_game_lambda" {
-  type        = "zip"
-  source_dir  = "${path.module}/../.build/lambda-packages/getGame"
-  output_path = "${path.module}/lambda-zips/getGame.zip"
-  
-  depends_on = [null_resource.build_lambda]
-  
-  excludes = ["node_modules/.cache"]
-}
-
-# Build step - triggers when source files change
-resource "null_resource" "build_lambda" {
-  triggers = {
-    handlers_hash = sha256(join("", [
-      for f in fileset("${path.module}/../handlers", "**/*.ts") : filesha256("${path.module}/../handlers/${f}")
-    ]))
-    lib_hash = sha256(join("", [
-      for f in fileset("${path.module}/../lib", "**/*.ts") : filesha256("${path.module}/../lib/${f}")
-    ]))
-    shared_hash = sha256(join("", [
-      for f in fileset("${path.module}/../shared", "**/*.ts") : filesha256("${path.module}/../shared/${f}")
-    ]))
-    package_json = filesha256("${path.module}/../package.json")
-  }
-
-  provisioner "local-exec" {
-    command = "cd ${path.module}/.. && bash scripts/build-lambda.sh"
-  }
-}
-
-# Test Lambda function
-resource "aws_lambda_function" "test" {
-  filename         = data.archive_file.test_lambda.output_path
-  function_name    = "${local.service_name}-test"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "index.handler"
-  runtime         = "nodejs20.x"
-  timeout         = var.lambda_timeout
-  memory_size     = var.lambda_memory_size
-  source_code_hash = data.archive_file.test_lambda.output_base64sha256
-
-  environment {
-    variables = {
-      GAMES_TABLE = aws_dynamodb_table.games.name
-    }
-  }
-
-  tags = local.common_tags
-}
-
-# CreateGame Lambda function
-resource "aws_lambda_function" "create_game" {
-  filename         = data.archive_file.create_game_lambda.output_path
-  function_name    = "${local.service_name}-create-game"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "index.handler"
-  runtime         = "nodejs20.x"
-  timeout         = var.lambda_timeout
-  memory_size     = var.lambda_memory_size
-  source_code_hash = data.archive_file.create_game_lambda.output_base64sha256
-
-  environment {
-    variables = {
-      GAMES_TABLE = aws_dynamodb_table.games.name
-    }
-  }
-
-  tags = local.common_tags
-}
-
-# JoinGame Lambda function
-resource "aws_lambda_function" "join_game" {
-  filename         = data.archive_file.join_game_lambda.output_path
-  function_name    = "${local.service_name}-join-game"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "index.handler"
-  runtime         = "nodejs20.x"
-  timeout         = var.lambda_timeout
-  memory_size     = var.lambda_memory_size
-  source_code_hash = data.archive_file.join_game_lambda.output_base64sha256
-
-  environment {
-    variables = {
-      GAMES_TABLE = aws_dynamodb_table.games.name
-    }
-  }
-
-  tags = local.common_tags
-}
-
-# GetGame Lambda function
-resource "aws_lambda_function" "get_game" {
-  filename         = data.archive_file.get_game_lambda.output_path
-  function_name    = "${local.service_name}-get-game"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "index.handler"
-  runtime         = "nodejs20.x"
-  timeout         = var.lambda_timeout
-  memory_size     = var.lambda_memory_size
-  source_code_hash = data.archive_file.get_game_lambda.output_base64sha256
-
-  environment {
-    variables = {
-      GAMES_TABLE = aws_dynamodb_table.games.name
-    }
-  }
-
-  tags = local.common_tags
-}
+# API Lambda functions removed - API routes are now in the game app as Next.js API routes
+# All API endpoints are available at:
+# - https://dev.syniad.net/api/games
+# - https://dev.syniad.net/api/scenarios  
+# - https://dev.syniad.net/api/docs
+#
+# The following Lambda functions have been removed:
+# - test, create_game, join_game, get_game, delete_game, get_all_games
+# - create_scenario, get_scenarios, update_scenario, delete_scenario
+# - docs, authorizer
+#
+# Authentication is now handled by Better Auth in Next.js API routes
 

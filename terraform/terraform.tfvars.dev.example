@@ -1,0 +1,19 @@
+# Dev environment configuration
+# Copy to terraform.tfvars when using dev workspace
+
+aws_region   = "us-east-1"
+stage        = "dev"
+project_name = "syniad"
+domain_name  = "syniad.net"
+
+# CORS Configuration
+cors_allowed_origins = ["http://localhost:3000", "http://localhost:5173", "*"]
+
+# Cognito Configuration (for user authentication)
+cognito_callback_urls = ["http://localhost:3000/callback", "http://localhost:5173/callback"]
+cognito_logout_urls = ["http://localhost:3000", "http://localhost:5173"]
+
+# Environment-specific overrides
+lambda_timeout   = 30
+lambda_memory_size = 256
+

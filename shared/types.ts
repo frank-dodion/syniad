@@ -1,7 +1,33 @@
+export type TerrainType = 'clear' | 'mountain' | 'forest' | 'water' | 'desert' | 'swamp';
+
+export interface Hex {
+  row: number;
+  column: number;
+  terrain: TerrainType;
+}
+
+export interface Scenario {
+  scenarioId: string;
+  title: string;
+  description: string;
+  columns: number;
+  rows: number;
+  turns: number;
+  hexes?: Hex[]; // Optional array of hex terrain definitions
+  createdAt: string;
+  updatedAt?: string;
+  queryKey?: string; // Index field: constant "ALL_SCENARIOS" for efficient querying without Scan
+}
+
 export interface Game {
   gameId: string;
   status: 'waiting' | 'active' | 'finished';
-  players: Player[];
+  scenarioId: string; // Reference to the scenario this game uses
+  player1: Player; // Required: Creator (Player 1) - always the game creator
+  player2?: Player; // Optional: Second player (Player 2) - set when someone joins
+  // Denormalized index fields for efficient database queries:
+  player1Id: string; // Index field: equals player1.userId for efficient "games created by player1" queries
+  player2Id?: string; // Index field: equals player2.userId when player2 exists
   turnNumber: number;
   createdAt: string;
   updatedAt?: string;
@@ -9,8 +35,8 @@ export interface Game {
 
 export interface Player {
   name: string;
-  userId?: string;
-  playerIndex?: number;
+  userId: string; // Required: Cognito sub (unique, immutable identifier)
+  // Note: playerIndex is implicit - player1 is always index 1, player2 is always index 2
 }
 
 export interface GameDefinition {

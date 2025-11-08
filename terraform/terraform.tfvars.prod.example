@@ -1,0 +1,19 @@
+# Production environment configuration
+# Copy to terraform.tfvars when using prod workspace
+
+aws_region   = "us-east-1"
+stage        = "prod"
+project_name = "syniad"
+domain_name  = "syniad.net"
+
+# CORS Configuration - RESTRICT in production!
+cors_allowed_origins = ["https://yourdomain.com", "https://app.yourdomain.com"]
+
+# Cognito Configuration (for user authentication)
+cognito_callback_urls = ["https://yourdomain.com/callback", "https://app.yourdomain.com/callback"]
+cognito_logout_urls = ["https://yourdomain.com", "https://app.yourdomain.com"]
+
+# Production-specific overrides (examples)
+lambda_timeout   = 60      # Longer timeout for prod
+lambda_memory_size = 512   # More memory for prod
+
