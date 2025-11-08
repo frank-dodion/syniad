@@ -121,10 +121,10 @@ resource "aws_cloudfront_distribution" "frontend" {
 
   aliases = [local.frontend_domain_name]
 
-  # API Gateway origin (for HTML/API routes)
+  # Lambda Function URL origin (for HTML/API routes)
   origin {
-    domain_name = replace(replace(aws_apigatewayv2_api.game_api.api_endpoint, "https://", ""), "/", "")
-    origin_id   = "API-Gateway-Game"
+    domain_name = replace(replace(aws_lambda_function_url.game.function_url, "https://", ""), "/", "")
+    origin_id   = "Lambda-Game"
     custom_origin_config {
       http_port              = 443
       https_port             = 443
@@ -142,11 +142,11 @@ resource "aws_cloudfront_distribution" "frontend" {
     origin_access_control_id = aws_cloudfront_origin_access_control.game_static.id
   }
 
-  # Default behavior - API Gateway origin (HTML/API routes)
+  # Default behavior - Lambda Function URL origin (HTML/API routes)
   default_cache_behavior {
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "API-Gateway-Game"
+    target_origin_id       = "Lambda-Game"
     viewer_protocol_policy = "redirect-to-https"
     compress               = true
 
@@ -160,13 +160,12 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   # Cache behavior for API routes - must come before default behavior
-  # This ensures API routes don't get the custom error response for 403
   # IMPORTANT: Authentication should never be cached - all TTLs set to 0
   ordered_cache_behavior {
     path_pattern     = "/api/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD"]  # Only GET/HEAD can be cached, but TTL=0 means no caching
-    target_origin_id = "API-Gateway-Game"
+    target_origin_id = "Lambda-Game"
     viewer_protocol_policy = "redirect-to-https"
     compress         = true
 
