@@ -133,6 +133,10 @@ resource "aws_cloudfront_distribution" "frontend" {
       origin_read_timeout    = 60
       origin_keepalive_timeout = 5
     }
+    custom_header {
+      name  = "Host"
+      value = replace(replace(aws_apigatewayv2_api.game_api.api_endpoint, "https://", ""), "/", "")
+    }
   }
 
   # S3 origin for static assets
