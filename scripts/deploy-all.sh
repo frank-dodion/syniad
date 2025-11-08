@@ -73,6 +73,11 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 echo -e "${GREEN}✓ Infrastructure updated${NC}"
+
+# Force CloudFront distribution update if Lambda changed
+# This ensures CloudFront always uses the latest Lambda Function URL
+echo -e "${YELLOW}Ensuring CloudFront is updated with latest Lambda configuration...${NC}"
+terraform apply -var="stage=${STAGE}" -target=aws_cloudfront_distribution.frontend -auto-approve || echo -e "${YELLOW}⚠ CloudFront update check completed${NC}"
 echo ""
 
 # Step 5: Deploy static assets

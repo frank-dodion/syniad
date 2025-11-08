@@ -113,11 +113,13 @@ resource "aws_cloudfront_origin_access_control" "frontend" {
 }
 
 # CloudFront Distribution
+# Note: depends_on ensures CloudFront updates when Lambda Function URL changes
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
-  comment             = "${local.service_name} frontend distribution"
+  # Include Lambda Function URL in comment to force update when Lambda changes
+  comment             = "${local.service_name} frontend distribution - Lambda: ${aws_lambda_function_url.game.function_url}"
 
   aliases = [local.frontend_domain_name]
 
@@ -187,9 +189,18 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   depends_on = [
-    aws_acm_certificate_validation.frontend
+    aws_acm_certificate_validation.frontend,
+    aws_lambda_function_url.game,
+    aws_lambda_function.game
   ]
 
+  # Ensure CloudFront updates when Lambda Function URL changes
+  # The comment field includes the Lambda Function URL, so any change to Lambda
+  # will trigger a CloudFront distribution update
+  lifecycle {
+    create_before_destroy = false
+  }
+  
   tags = local.common_tags
 }
 
