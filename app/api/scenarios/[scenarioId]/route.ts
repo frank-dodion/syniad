@@ -18,6 +18,11 @@ export async function GET(
 ) {
   try {
     const user = await extractUserIdentity(request);
+    
+    if (!user || !user.userId) {
+      return createErrorResponse(401, 'Authentication required');
+    }
+    
     const pathParams = await params;
     
     const validation = validatePathParams(contract.getScenario, pathParams);

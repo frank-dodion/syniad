@@ -121,15 +121,17 @@ resource "aws_cloudfront_distribution" "frontend" {
 
   aliases = [local.frontend_domain_name]
 
-  # Lambda Function URL origin (primary - for HTML/API routes)
+  # API Gateway origin (for HTML/API routes)
   origin {
-    domain_name = replace(replace(aws_lambda_function_url.game.function_url, "https://", ""), "/", "")
-    origin_id   = "Lambda-Game"
+    domain_name = replace(replace(aws_apigatewayv2_api.game_api.api_endpoint, "https://", ""), "/", "")
+    origin_id   = "API-Gateway-Game"
     custom_origin_config {
       http_port              = 443
       https_port             = 443
       origin_protocol_policy = "https-only"
       origin_ssl_protocols   = ["TLSv1.2"]
+      origin_read_timeout    = 60
+      origin_keepalive_timeout = 5
     }
   }
 
@@ -140,11 +142,11 @@ resource "aws_cloudfront_distribution" "frontend" {
     origin_access_control_id = aws_cloudfront_origin_access_control.game_static.id
   }
 
-  # Default behavior - Lambda origin (HTML/API routes)
+  # Default behavior - API Gateway origin (HTML/API routes)
   default_cache_behavior {
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "Lambda-Game"
+    target_origin_id       = "API-Gateway-Game"
     viewer_protocol_policy = "redirect-to-https"
     compress               = true
 
@@ -164,7 +166,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     path_pattern     = "/api/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD"]  # Only GET/HEAD can be cached, but TTL=0 means no caching
-    target_origin_id = "Lambda-Game"
+    target_origin_id = "API-Gateway-Game"
     viewer_protocol_policy = "redirect-to-https"
     compress         = true
 
@@ -203,14 +205,8 @@ resource "aws_cloudfront_distribution" "frontend" {
     compress               = true
   }
 
-  # Custom error response for 404 only - serve index.html for SPA routing
-  # Note: We do NOT convert 403 to 200, as API routes need to return proper 403 errors
-  custom_error_response {
-    error_code         = 404
-    response_code      = 200
-    response_page_path = "/index.html"
-    error_caching_min_ttl = 300
-  }
+  # No custom error responses - Next.js handles all routing server-side
+  # Authentication is handled in the Next.js app for both page routes and API endpoints
 
   restrictions {
     geo_restriction {
