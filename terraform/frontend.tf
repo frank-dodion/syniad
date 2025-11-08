@@ -143,6 +143,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   # Default behavior - Lambda Function URL origin (HTML/API routes)
+  # This handles all routes including /api/* with no caching (TTL=0) and proper header forwarding
   default_cache_behavior {
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]
@@ -152,24 +153,9 @@ resource "aws_cloudfront_distribution" "frontend" {
 
     # Use cache policy and origin request policy instead of forwarded_values
     # This ensures Host header is set to origin domain, not forwarded from viewer
+    # Cache policy has TTL=0 so no caching occurs
     cache_policy_id            = aws_cloudfront_cache_policy.no_cache.id
     origin_request_policy_id   = aws_cloudfront_origin_request_policy.forward_all_except_host.id
-  }
-
-  # Cache behavior for API routes - must come before default behavior
-  # IMPORTANT: Authentication should never be cached - all TTLs set to 0
-  ordered_cache_behavior {
-    path_pattern     = "/api/*"
-    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods   = ["GET", "HEAD"]  # Only GET/HEAD can be cached, but TTL=0 means no caching
-    target_origin_id = "Lambda-Game"
-    viewer_protocol_policy = "redirect-to-https"
-    compress         = true
-
-    # Use cache policy and origin request policy
-    # This ensures Host header is set to origin domain, not forwarded from viewer
-    cache_policy_id            = aws_cloudfront_cache_policy.no_cache.id
-    origin_request_policy_id      = aws_cloudfront_origin_request_policy.forward_all_except_host.id
   }
 
   # Cache behavior for static assets
