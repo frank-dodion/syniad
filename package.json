@@ -10,7 +10,9 @@
     "deploy:dev": "bash scripts/deploy-all.sh dev",
     "deploy:prod": "bash scripts/deploy-all.sh prod",
     "cleanup:dev": "bash scripts/cleanup-orphaned-resources.sh dev",
-    "cleanup:prod": "bash scripts/cleanup-orphaned-resources.sh prod"
+    "cleanup:prod": "bash scripts/cleanup-orphaned-resources.sh prod",
+    "invalidate-cache:dev": "bash scripts/invalidate-cloudfront-cache.sh dev",
+    "invalidate-cache:prod": "bash scripts/invalidate-cloudfront-cache.sh prod"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.922.0",

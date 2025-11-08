@@ -159,17 +159,23 @@ resource "aws_cloudfront_distribution" "frontend" {
 
   # Cache behavior for API routes - must come before default behavior
   # This ensures API routes don't get the custom error response for 403
+  # IMPORTANT: Authentication should never be cached - all TTLs set to 0
   ordered_cache_behavior {
     path_pattern     = "/api/*"
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods   = ["GET", "HEAD"]
+    cached_methods   = ["GET", "HEAD"]  # Only GET/HEAD can be cached, but TTL=0 means no caching
     target_origin_id = "Lambda-Game"
     viewer_protocol_policy = "redirect-to-https"
     compress         = true
 
+    # Disable caching completely for API routes
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
+
     forwarded_values {
       query_string = true
-      headers      = ["*"]
+      headers      = ["*"]  # Forward all headers including Authorization
       cookies {
         forward = "all"
       }

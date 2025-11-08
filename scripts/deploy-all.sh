@@ -88,7 +88,15 @@ fi
 echo -e "${GREEN}✓ Static assets deployed${NC}"
 echo ""
 
-# Step 6: Summary
+# Step 6: Invalidate CloudFront cache
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${YELLOW}Step 6: Invalidating CloudFront cache...${NC}"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+cd "$PROJECT_ROOT"
+bash scripts/invalidate-cloudfront-cache.sh "$STAGE" || echo -e "${YELLOW}⚠ Cache invalidation failed (continuing...)${NC}"
+echo ""
+
+# Step 7: Summary
 echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║        Deployment Complete!            ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"

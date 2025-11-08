@@ -120,10 +120,13 @@ export async function OPTIONS(request: NextRequest) {
   return new Response(null, {
     status: 204,
     headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '86400',
+      'Access-Control-Max-Age': '86400', // CORS preflight cache (separate from response cache)
     },
   });
 }
