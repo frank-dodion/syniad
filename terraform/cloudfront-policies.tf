@@ -15,7 +15,7 @@ resource "aws_cloudfront_cache_policy" "no_cache" {
     }
 
     headers_config {
-      header_behavior = "allViewerAndWhitelistCloudFront"
+      header_behavior = "whitelist"
       headers {
         items = ["Authorization", "CloudFront-Forwarded-Proto", "CloudFront-Is-Desktop-Viewer", "CloudFront-Is-Mobile-Viewer", "CloudFront-Is-SmartTV-Viewer", "CloudFront-Is-Tablet-Viewer", "CloudFront-Viewer-Country"]
       }
@@ -38,7 +38,7 @@ resource "aws_cloudfront_origin_request_policy" "forward_all_except_host" {
   }
 
   headers_config {
-    header_behavior = "allViewerAndWhitelistCloudFront"
+    header_behavior = "whitelist"
     headers {
       items = ["Authorization", "CloudFront-Forwarded-Proto", "CloudFront-Is-Desktop-Viewer", "CloudFront-Is-Mobile-Viewer", "CloudFront-Is-SmartTV-Viewer", "CloudFront-Is-Tablet-Viewer", "CloudFront-Viewer-Country"]
     }
