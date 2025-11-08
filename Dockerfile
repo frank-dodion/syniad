@@ -63,7 +63,7 @@ RUN adduser --system --uid 1001 nextjs
 
 # Install Lambda Web Adapter for Function URL support
 # Lambda Function URLs use the Lambda Runtime API, which requires the adapter to translate to HTTP
-# Copy the adapter from the official public ECR image - using latest version
+# Copy the adapter from the official public ECR image
 RUN mkdir -p /opt/extensions
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.6.0 /lambda-adapter /opt/extensions/lambda-adapter
 RUN chmod +x /opt/extensions/lambda-adapter

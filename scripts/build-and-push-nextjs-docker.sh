@@ -22,17 +22,17 @@ echo "Region: $AWS_REGION"
 echo "Stage: $STAGE"
 
 # Build Next.js app first to generate static files
+# Note: Static assets are deployed separately in deploy-all.sh, not here
 echo ""
 echo "Building Next.js app to generate static files..."
 cd "$PROJECT_ROOT"
 npm ci --legacy-peer-deps
 npm run build
 
-# Deploy static assets to S3
+# Pre-pull Lambda adapter image to avoid rate limits during Docker build
 echo ""
-echo "Deploying static assets to S3..."
-cd "$PROJECT_ROOT"
-bash scripts/deploy-static-assets.sh "$STAGE"
+echo "Pre-pulling Lambda adapter image to avoid rate limits..."
+docker pull public.ecr.aws/awsguru/aws-lambda-adapter:0.6.0 || echo "Warning: Failed to pre-pull Lambda adapter, will try during build"
 
 # Login to ECR
 echo ""
