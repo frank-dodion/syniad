@@ -1,5 +1,5 @@
 # CloudFront Cache Policy - no caching for API routes
-# When caching is disabled (TTL=0), header behavior must be "none"
+# When caching is disabled (TTL=0), both cookie and header behavior must be "none"
 resource "aws_cloudfront_cache_policy" "no_cache" {
   name        = "${local.service_name}-no-cache"
   comment     = "No caching policy for API routes"
@@ -12,7 +12,7 @@ resource "aws_cloudfront_cache_policy" "no_cache" {
     enable_accept_encoding_gzip   = true
 
     cookies_config {
-      cookie_behavior = "all"
+      cookie_behavior = "none"  # Required when caching is disabled
     }
 
     headers_config {
