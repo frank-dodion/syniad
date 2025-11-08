@@ -56,8 +56,8 @@ resource "null_resource" "build_and_push_docker" {
 resource "aws_lambda_function" "game" {
   function_name = "${local.service_name}-game"
   role          = aws_iam_role.lambda_role.arn
-  timeout       = 30
-  memory_size   = 512
+  timeout       = 60  # Increased to handle cold starts and Next.js initialization
+  memory_size   = 1024  # Increased memory for faster initialization
   package_type  = "Image"
 
   image_uri = "${aws_ecr_repository.game.repository_url}:latest"
