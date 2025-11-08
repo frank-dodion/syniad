@@ -150,13 +150,10 @@ resource "aws_cloudfront_distribution" "frontend" {
     viewer_protocol_policy = "redirect-to-https"
     compress               = true
 
-    forwarded_values {
-      query_string = true
-      headers      = ["*"]
-      cookies {
-        forward = "all"
-      }
-    }
+    # Use cache policy and origin request policy instead of forwarded_values
+    # This ensures Host header is set to origin domain, not forwarded from viewer
+    cache_policy_id            = aws_cloudfront_cache_policy.no_cache.id
+    origin_request_policy_id   = aws_cloudfront_origin_request_policy.forward_all_except_host.id
   }
 
   # Cache behavior for API routes - must come before default behavior
@@ -169,18 +166,10 @@ resource "aws_cloudfront_distribution" "frontend" {
     viewer_protocol_policy = "redirect-to-https"
     compress         = true
 
-    # Disable caching completely for API routes
-    min_ttl     = 0
-    default_ttl = 0
-    max_ttl     = 0
-
-    forwarded_values {
-      query_string = true
-      headers      = ["*"]  # Forward all headers including Authorization
-      cookies {
-        forward = "all"
-      }
-    }
+    # Use cache policy and origin request policy
+    # This ensures Host header is set to origin domain, not forwarded from viewer
+    cache_policy_id            = aws_cloudfront_cache_policy.no_cache.id
+    origin_request_policy_id      = aws_cloudfront_origin_request_policy.forward_all_except_host.id
   }
 
   # Cache behavior for static assets
