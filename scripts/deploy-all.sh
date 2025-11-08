@@ -30,33 +30,11 @@ echo -e "${YELLOW}Step 1: Building Next.js applications...${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 cd "$PROJECT_ROOT"
 bash scripts/build-nextjs.sh
-# Note: package-nextjs-lambda.sh is no longer needed - we use Docker container images
 echo ""
 
-# Step 2: Build Lambda functions (skipped - API routes are now in Next.js app)
-# echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-# echo -e "${YELLOW}Step 2: Building Lambda functions...${NC}"
-# echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-# cd "$PROJECT_ROOT"
-# npm run build:lambda
-# if [ $? -ne 0 ]; then
-#     echo -e "${RED}✗ Lambda build failed${NC}"
-#     exit 1
-# fi
-# echo -e "${GREEN}✓ Lambda functions built${NC}"
-# echo ""
-
-# Step 3: Cleanup orphaned resources (if any)
+# Step 2: Apply Terraform
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}Step 3: Cleaning up orphaned resources...${NC}"
-echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-cd "$PROJECT_ROOT"
-bash scripts/cleanup-orphaned-resources.sh "$STAGE" || echo -e "${YELLOW}⚠ Cleanup script failed or no resources to clean (continuing...)${NC}"
-echo ""
-
-# Step 4: Apply Terraform
-echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}Step 4: Applying Terraform infrastructure...${NC}"
+echo -e "${YELLOW}Step 2: Applying Terraform infrastructure...${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 cd "$PROJECT_ROOT/terraform"
 
@@ -73,35 +51,20 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 echo -e "${GREEN}✓ Infrastructure updated${NC}"
-
-# Force CloudFront distribution update if Lambda changed
-# This ensures CloudFront always uses the latest Lambda Function URL
-echo -e "${YELLOW}Ensuring CloudFront is updated with latest Lambda configuration...${NC}"
-terraform apply -var="stage=${STAGE}" -target=aws_cloudfront_distribution.frontend -auto-approve || echo -e "${YELLOW}⚠ CloudFront update check completed${NC}"
+echo ""
+echo -e "${YELLOW}Note: Static assets are deployed automatically by Terraform${NC}"
+echo -e "${YELLOW}Note: CloudFront updates automatically when Lambda Function URL changes${NC}"
 echo ""
 
-# Step 5: Deploy static assets
+# Step 3: Invalidate CloudFront cache
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}Step 5: Deploying static assets to S3...${NC}"
-echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-cd "$PROJECT_ROOT"
-bash scripts/deploy-static-assets.sh "$STAGE"
-if [ $? -ne 0 ]; then
-    echo -e "${RED}✗ Static assets deployment failed${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✓ Static assets deployed${NC}"
-echo ""
-
-# Step 6: Invalidate CloudFront cache
-echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}Step 6: Invalidating CloudFront cache...${NC}"
+echo -e "${YELLOW}Step 3: Invalidating CloudFront cache...${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 cd "$PROJECT_ROOT"
 bash scripts/invalidate-cloudfront-cache.sh "$STAGE" || echo -e "${YELLOW}⚠ Cache invalidation failed (continuing...)${NC}"
 echo ""
 
-# Step 7: Summary
+# Step 4: Summary
 echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║        Deployment Complete!            ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
