@@ -17,6 +17,10 @@ export async function GET(request: NextRequest) {
   try {
     const user = await extractUserIdentity(request);
     
+    if (!user || !user.userId) {
+      return createErrorResponse(401, 'Authentication required');
+    }
+    
     const { searchParams } = new URL(request.url);
     const validation = validateQueryParams(contract.getScenarios, searchParams);
     
