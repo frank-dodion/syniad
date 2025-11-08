@@ -49,8 +49,9 @@ TIMESTAMP_TAG="$(date +%Y%m%d-%H%M%S)"
 # Build for x86_64 architecture (Lambda's default)
 # Use project root as build context
 # Force Docker Image Manifest V2 Schema 2 format (Lambda requires this, not OCI)
-# Using --format=docker ensures Docker v2 format, compatible with Lambda
-docker build --format=docker --platform linux/amd64 -f Dockerfile -t "${ECR_REPO}:${IMAGE_TAG}" .
+# DOCKER_BUILDKIT=0 disables BuildKit which uses OCI format by default
+# This forces the legacy Docker builder which creates Docker v2 Schema 2 format
+DOCKER_BUILDKIT=0 docker build --platform linux/amd64 -f Dockerfile -t "${ECR_REPO}:${IMAGE_TAG}" .
 docker tag "${ECR_REPO}:${IMAGE_TAG}" "${ECR_REPO}:${TIMESTAMP_TAG}"
 
 echo "Pushing game image..."
