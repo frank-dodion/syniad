@@ -12,6 +12,7 @@ resource "aws_apigatewayv2_api" "game_api" {
     max_age           = 300
   }
 
+
   tags = local.common_tags
 }
 
