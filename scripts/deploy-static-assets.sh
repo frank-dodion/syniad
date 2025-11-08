@@ -12,6 +12,14 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Get bucket name from Terraform output
 cd "$PROJECT_ROOT/terraform"
+# Select the correct workspace before reading outputs
+if [ "$STAGE" = "dev" ]; then
+    echo "Switched to workspace \"dev\"."
+    terraform workspace select dev 2>/dev/null || true
+elif [ "$STAGE" = "prod" ]; then
+    echo "Switched to workspace \"prod\"."
+    terraform workspace select prod 2>/dev/null || true
+fi
 BUCKET_GAME=$(terraform output -raw game_static_bucket_name 2>/dev/null || echo "")
 
 if [ -z "$BUCKET_GAME" ]; then

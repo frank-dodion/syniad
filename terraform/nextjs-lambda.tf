@@ -107,11 +107,13 @@ resource "aws_lambda_function_url" "game" {
   function_name      = aws_lambda_function.game.function_name
   authorization_type = "NONE"
   cors {
-    allow_credentials = true
+    # Note: allow_credentials cannot be true with allow_origins = ["*"]
+    # Since we use Bearer token auth (not cookies), we don't need credentials
+    allow_credentials = false
     allow_origins     = ["*"]
     allow_methods     = ["*"]
     allow_headers     = ["*"]
-    expose_headers    = ["*"]
+    expose_headers   = ["*"]
     max_age           = 300
   }
 }

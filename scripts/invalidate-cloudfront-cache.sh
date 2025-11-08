@@ -21,6 +21,15 @@ echo -e "${BLUE}Invalidating CloudFront cache...${NC}"
 
 cd "$PROJECT_ROOT/terraform"
 
+# Select the correct workspace before reading outputs
+if [ "$STAGE" = "dev" ]; then
+    echo -e "${YELLOW}Switched to workspace \"dev\".${NC}"
+    terraform workspace select dev 2>/dev/null || true
+elif [ "$STAGE" = "prod" ]; then
+    echo -e "${YELLOW}Switched to workspace \"prod\".${NC}"
+    terraform workspace select prod 2>/dev/null || true
+fi
+
 # Get CloudFront distribution ID
 DISTRIBUTION_ID=$(terraform output -raw frontend_cloudfront_distribution_id 2>/dev/null || echo "")
 
@@ -47,25 +56,14 @@ fi
 
 echo -e "${GREEN}Found distribution: ${DISTRIBUTION_ID}${NC}"
 
-# Invalidate API paths and root
-PATHS=(
-  "/api/*"
-  "/"
-)
+# Note: CloudFront invalidation is not needed because:
+# - API routes (/api/*) use no_cache policy with TTL=0 (not cached)
+# - HTML pages (/) use no_cache policy with TTL=0 (not cached)
+# - Static assets (/_next/static/*) use hashed filenames (new builds = new filenames)
+# 
+# Since nothing is cached, invalidation is unnecessary and would be wasteful.
+# If you need to force refresh, users can do a hard refresh (Ctrl+F5 / Cmd+Shift+R).
 
-echo -e "${YELLOW}Creating invalidation for paths: ${PATHS[*]}${NC}"
-
-INVALIDATION_ID=$(aws cloudfront create-invalidation \
-  --distribution-id "$DISTRIBUTION_ID" \
-  --paths "${PATHS[@]}" \
-  --query 'Invalidation.Id' \
-  --output text 2>/dev/null)
-
-if [ -n "$INVALIDATION_ID" ]; then
-  echo -e "${GREEN}✓ Invalidation created: ${INVALIDATION_ID}${NC}"
-  echo -e "${YELLOW}Note: CloudFront invalidations typically take 1-2 minutes to complete${NC}"
-else
-  echo -e "${RED}✗ Failed to create invalidation${NC}"
-  exit 1
-fi
+echo -e "${YELLOW}Note: No cache invalidation needed - all routes use TTL=0 (no caching)${NC}"
+echo -e "${YELLOW}Static assets use hashed filenames, so new builds automatically use new URLs${NC}"
 

@@ -6,6 +6,9 @@
 
 set -e
 
+# Clear terminal at start
+clear
+
 STAGE=${1:-dev}
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -40,8 +43,10 @@ cd "$PROJECT_ROOT/terraform"
 
 # Select or create workspace
 if [ "$STAGE" = "dev" ]; then
+    echo -e "${YELLOW}Switched to workspace \"dev\".${NC}"
     terraform workspace select dev 2>/dev/null || terraform workspace new dev
 elif [ "$STAGE" = "prod" ]; then
+    echo -e "${YELLOW}Switched to workspace \"prod\".${NC}"
     terraform workspace select prod 2>/dev/null || terraform workspace new prod
 fi
 
@@ -52,16 +57,20 @@ if [ $? -ne 0 ]; then
 fi
 echo -e "${GREEN}✓ Infrastructure updated${NC}"
 echo ""
-echo -e "${YELLOW}Note: Static assets are deployed automatically by Terraform${NC}"
-echo -e "${YELLOW}Note: CloudFront updates automatically when Lambda Function URL changes${NC}"
-echo ""
 
-# Step 3: Invalidate CloudFront cache
+# Step 3: Deploy static assets (always deploy fresh build output)
+# Terraform's null_resource.deploy_static_assets only triggers on config changes,
+# not on build output changes, so we need to manually deploy after building
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}Step 3: Invalidating CloudFront cache...${NC}"
+echo -e "${YELLOW}Step 3: Deploying static assets to S3...${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 cd "$PROJECT_ROOT"
-bash scripts/invalidate-cloudfront-cache.sh "$STAGE" || echo -e "${YELLOW}⚠ Cache invalidation failed (continuing...)${NC}"
+bash scripts/deploy-static-assets.sh "$STAGE"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}✗ Static assets deployment failed${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Static assets deployed${NC}"
 echo ""
 
 # Step 4: Summary
@@ -71,10 +80,19 @@ echo -e "${BLUE}╚════════════════════�
 echo ""
 
 cd "$PROJECT_ROOT/terraform"
+# Ensure we're in the correct workspace before reading outputs
+if [ "$STAGE" = "dev" ]; then
+    echo -e "${YELLOW}Switched to workspace \"dev\".${NC}"
+    terraform workspace select dev 2>/dev/null || true
+elif [ "$STAGE" = "prod" ]; then
+    echo -e "${YELLOW}Switched to workspace \"prod\".${NC}"
+    terraform workspace select prod 2>/dev/null || true
+fi
 GAME_URL=$(terraform output -raw frontend_url 2>/dev/null || echo "")
 API_URL=$(terraform output -raw api_url 2>/dev/null || echo "")
+DIST_ID=$(terraform output -raw frontend_cloudfront_distribution_id 2>/dev/null || echo "")
 
-echo -e "${GREEN}Deployed Applications:${NC}"
+echo -e "${GREEN}Deployed Applications (${STAGE}):${NC}"
 if [ -n "$GAME_URL" ]; then
     echo -e "  ${GREEN}✓${NC} Game App:        ${GAME_URL}"
     echo -e "  ${GREEN}✓${NC} Scenario Editor: ${GAME_URL}/editor"
@@ -83,8 +101,11 @@ if [ -n "$API_URL" ]; then
     echo -e "  ${GREEN}✓${NC} API:             ${API_URL}"
     echo -e "  ${GREEN}✓${NC} API Docs:        ${API_URL}/docs"
 fi
+if [ -n "$DIST_ID" ]; then
+    echo -e "  ${GREEN}✓${NC} CloudFront ID:   ${DIST_ID}"
+fi
 echo ""
-echo -e "${YELLOW}Note: CloudFront cache invalidations are in progress.${NC}"
-echo -e "${YELLOW}Changes may take 1-2 minutes to be visible.${NC}"
+echo -e "${YELLOW}Note: No cache invalidation needed - all routes use TTL=0 (no caching)${NC}"
+echo -e "${YELLOW}Static assets use hashed filenames, so new builds automatically use new URLs${NC}"
 echo ""
 
