@@ -5,7 +5,7 @@ resource "aws_apigatewayv2_api" "game_api" {
   description   = "HTTP API Gateway for ${local.service_name} game app"
 
   cors_configuration {
-    allow_credentials = true
+    allow_credentials = false  # Cannot be true when allow_origins is ["*"]
     allow_headers     = ["*"]
     allow_methods     = ["*"]
     allow_origins     = ["*"]
