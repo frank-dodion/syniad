@@ -48,12 +48,26 @@ TIMESTAMP_TAG="$(date +%Y%m%d-%H%M%S)"
 
 # Build for x86_64 architecture (Lambda's default)
 # Use project root as build context
-docker build --platform linux/amd64 -f Dockerfile -t "${ECR_REPO}:${IMAGE_TAG}" .
+# Force Docker Image Manifest V2 Schema 2 format (Lambda requires this, not OCI)
+# Using --format=docker ensures Docker v2 format, compatible with Lambda
+docker build --format=docker --platform linux/amd64 -f Dockerfile -t "${ECR_REPO}:${IMAGE_TAG}" .
 docker tag "${ECR_REPO}:${IMAGE_TAG}" "${ECR_REPO}:${TIMESTAMP_TAG}"
 
 echo "Pushing game image..."
 docker push "${ECR_REPO}:${IMAGE_TAG}"
 docker push "${ECR_REPO}:${TIMESTAMP_TAG}"
+
+# Get the Docker v2 manifest digest (Lambda requires Docker v2, not OCI)
+# When using DOCKER_BUILDKIT=0, the image should be Docker v2 format
+echo ""
+echo "Getting Docker v2 manifest digest..."
+IMAGE_DIGEST=$(aws ecr describe-images --repository-name "${SERVICE_NAME}-game" --image-ids imageTag=latest --query 'imageDetails[0].imageDigest' --output text --region "$AWS_REGION" 2>/dev/null || echo "")
+if [ -n "$IMAGE_DIGEST" ]; then
+  echo "Image digest: $IMAGE_DIGEST"
+  echo "To use this in Terraform, update image_uri to: ${ECR_REPO}@${IMAGE_DIGEST}"
+else
+  echo "Warning: Could not get image digest"
+fi
 
 echo "Docker images built and pushed successfully!"
 

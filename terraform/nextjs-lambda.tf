@@ -40,7 +40,7 @@ resource "null_resource" "build_and_push_docker" {
   }
 
   provisioner "local-exec" {
-    command     = "cd ${path.module}/.. && bash scripts/build-and-push-nextjs-docker.sh"
+    command     = "cd ${path.module}/.. && bash scripts/build-and-push-nextjs-docker.sh ${var.stage}"
     on_failure  = continue
     interpreter = ["bash", "-c"]
   }
@@ -60,9 +60,11 @@ resource "aws_lambda_function" "game" {
   memory_size   = 1024  # Increased memory for faster initialization
   package_type  = "Image"
 
-  # Use specific image digest to avoid OCI index manifest issues
-  # Extract actual manifest digest from: aws ecr batch-get-image --repository-name syniad-dev-game --image-ids imageTag=latest --query 'images[0].imageManifest' | jq -r '.manifests[0].digest'
-  image_uri = "${aws_ecr_repository.game.repository_url}@sha256:bcd0400c069fd61dbcf5584f2904de741d15b65b1c6fa2552d367e566bf9aa5b"
+  # Use :latest tag to always use the most recent image
+  # AWS Lambda supports both tags and digests for container images per AWS documentation
+  # Using :latest ensures deployments always get the newest image after build_and_push_docker runs
+  # The build script uses --format=docker to ensure Docker Image Manifest V2 Schema 2 format (Lambda-compatible)
+  image_uri = "${aws_ecr_repository.game.repository_url}:latest"
 
   # Note: Lambda Function URLs work directly with container images - no Lambda Web Adapter layer needed
 
