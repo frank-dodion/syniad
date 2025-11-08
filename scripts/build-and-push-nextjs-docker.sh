@@ -48,10 +48,11 @@ TIMESTAMP_TAG="$(date +%Y%m%d-%H%M%S)"
 
 # Build for x86_64 architecture (Lambda's default)
 # Use project root as build context
-# Force Docker Image Manifest V2 Schema 2 format (Lambda requires this, not OCI)
-# DOCKER_BUILDKIT=0 disables BuildKit which uses OCI format by default
-# This forces the legacy Docker builder which creates Docker v2 Schema 2 format
-DOCKER_BUILDKIT=0 docker build --platform linux/amd64 -f Dockerfile -t "${ECR_REPO}:${IMAGE_TAG}" .
+# Per AWS Lambda docs: use docker buildx with --provenance=false and --sbom=false
+# These flags prevent OCI index manifests that Lambda doesn't support
+# --load outputs to local Docker daemon for tagging/pushing
+# This creates Docker Image Manifest V2 Schema 2 format (single-arch) compatible with Lambda
+docker buildx build --platform linux/amd64 --provenance=false --sbom=false --load -f Dockerfile -t "${ECR_REPO}:${IMAGE_TAG}" .
 docker tag "${ECR_REPO}:${IMAGE_TAG}" "${ECR_REPO}:${TIMESTAMP_TAG}"
 
 echo "Pushing game image..."
