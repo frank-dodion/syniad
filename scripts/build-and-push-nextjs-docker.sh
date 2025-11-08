@@ -25,7 +25,7 @@ echo "Stage: $STAGE"
 echo ""
 echo "Building Next.js app to generate static files..."
 cd "$PROJECT_ROOT"
-npm ci
+npm ci --legacy-peer-deps
 npm run build
 
 # Deploy static assets to S3
@@ -43,6 +43,7 @@ aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS 
 echo "Building app image..."
 cd "$PROJECT_ROOT"
 ECR_REPO="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${SERVICE_NAME}-game"
+IMAGE_TAG="latest"
 TIMESTAMP_TAG="$(date +%Y%m%d-%H%M%S)"
 
 # Build for x86_64 architecture (Lambda's default)

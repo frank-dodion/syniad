@@ -60,13 +60,20 @@ resource "aws_lambda_function" "game" {
   memory_size   = 1024  # Increased memory for faster initialization
   package_type  = "Image"
 
-  image_uri = "${aws_ecr_repository.game.repository_url}:latest"
+  # Use specific image digest to avoid OCI index manifest issues
+  # Extract actual manifest digest from: aws ecr batch-get-image --repository-name syniad-dev-game --image-ids imageTag=latest --query 'images[0].imageManifest' | jq -r '.manifests[0].digest'
+  image_uri = "${aws_ecr_repository.game.repository_url}@sha256:bcd0400c069fd61dbcf5584f2904de741d15b65b1c6fa2552d367e566bf9aa5b"
 
   # Note: Lambda Function URLs work directly with container images - no Lambda Web Adapter layer needed
 
   environment {
     variables = {
       PORT                     = "8080"
+      HOSTNAME                 = "0.0.0.0"
+      # Lambda Web Adapter configuration - disable readiness check
+      AWS_LWA_PORT                      = "8080"
+      AWS_LWA_ENABLE_READINESS_CHECK    = "false"
+      # Next.js environment variables
       NEXT_PUBLIC_API_URL      = "https://${local.frontend_domain_name}" # API routes are now in the game app
       NEXT_PUBLIC_FRONTEND_URL = "https://${local.frontend_domain_name}"
       # NEXT_PUBLIC_ASSET_PREFIX is a build-time variable, already embedded in Docker image
