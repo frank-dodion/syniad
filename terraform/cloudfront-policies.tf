@@ -1,5 +1,5 @@
 # CloudFront Cache Policy - no caching for API routes
-# When caching is disabled (TTL=0), both cookie and header behavior must be "none"
+# When caching is disabled (TTL=0), all parameters (cookies, headers, query strings) must be "none"
 resource "aws_cloudfront_cache_policy" "no_cache" {
   name        = "${local.service_name}-no-cache"
   comment     = "No caching policy for API routes"
@@ -20,7 +20,7 @@ resource "aws_cloudfront_cache_policy" "no_cache" {
     }
 
     query_strings_config {
-      query_string_behavior = "all"
+      query_string_behavior = "none"  # Required when caching is disabled
     }
   }
 }
