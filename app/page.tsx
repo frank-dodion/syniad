@@ -9,18 +9,20 @@ export default function HomePage() {
   const { user, isLoading } = useAuth();
 
   function handleLogin() {
-    // Check if there's a stored redirect destination
-    const redirectPath =
-      typeof window !== "undefined"
-        ? sessionStorage.getItem("authRedirect")
-        : null;
+    // Store the current path for post-auth redirect
+    if (typeof window !== "undefined") {
+      const currentPath =
+        window.location.pathname +
+        window.location.search +
+        window.location.hash;
+      if (currentPath && currentPath !== "/") {
+        sessionStorage.setItem("authRedirect", currentPath);
+      }
+    }
 
-    // Use the redirect path if available, otherwise use current location
-    const callbackURL = redirectPath
-      ? `${window.location.origin}${redirectPath}`
-      : window.location.href;
-
-    login(callbackURL);
+    // Pass the current location to login - it will store the redirect path
+    // and use only the origin for the OAuth callback URL
+    login(window.location.href);
   }
 
   function handleLogout() {

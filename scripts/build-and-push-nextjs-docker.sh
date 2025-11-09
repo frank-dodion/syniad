@@ -27,10 +27,25 @@ AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "us-east-1")
 
 SERVICE_NAME="syniad-${STAGE}"
 
+# Get frontend URL from Terraform output (matches terraform/locals.tf logic)
+# This ensures the build-time variable matches the runtime configuration
+FRONTEND_URL=$(terraform output -raw frontend_url 2>/dev/null || echo "")
+if [ -z "$FRONTEND_URL" ]; then
+  # Fallback: calculate from stage (matching terraform/locals.tf logic)
+  DOMAIN_NAME=$(terraform output -raw domain_name 2>/dev/null || echo "syniad.net")
+  if [ "$STAGE" = "prod" ]; then
+    FRONTEND_DOMAIN="$DOMAIN_NAME"
+  else
+    FRONTEND_DOMAIN="${STAGE}.${DOMAIN_NAME}"
+  fi
+  FRONTEND_URL="https://${FRONTEND_DOMAIN}"
+fi
+
 echo "Building and pushing Next.js Docker images..."
 echo "AWS Account: $AWS_ACCOUNT_ID"
 echo "Region: $AWS_REGION"
 echo "Stage: $STAGE"
+echo "Frontend URL: $FRONTEND_URL"
 
 # Pre-pull Lambda adapter image to avoid rate limits during Docker build
 echo ""
@@ -55,7 +70,17 @@ TIMESTAMP_TAG="$(date +%Y%m%d-%H%M%S)"
 # These flags prevent OCI index manifests that Lambda doesn't support
 # --load outputs to local Docker daemon for tagging/pushing
 # This creates Docker Image Manifest V2 Schema 2 format (single-arch) compatible with Lambda
-docker buildx build --platform linux/amd64 --provenance=false --sbom=false --load -f Dockerfile -t "${ECR_REPO}:${IMAGE_TAG}" .
+# Pass build args for Next.js public environment variables (embedded at build time)
+docker buildx build \
+  --platform linux/amd64 \
+  --provenance=false \
+  --sbom=false \
+  --load \
+  --build-arg NEXT_PUBLIC_FRONTEND_URL="${FRONTEND_URL}" \
+  --build-arg NEXT_PUBLIC_API_URL="${FRONTEND_URL}" \
+  -f Dockerfile \
+  -t "${ECR_REPO}:${IMAGE_TAG}" \
+  .
 docker tag "${ECR_REPO}:${IMAGE_TAG}" "${ECR_REPO}:${TIMESTAMP_TAG}"
 
 echo "Pushing game image..."

@@ -3,8 +3,19 @@
 import { createAuthClient } from "better-auth/react";
 import { useState, useEffect } from "react";
 
+// Use the same baseURL logic as the server-side auth configuration
+// This ensures the OAuth redirect_uri matches what's configured in Cognito
+const getBaseURL = () => {
+  if (typeof window === 'undefined') {
+    return 'http://localhost:3000';
+  }
+  // In production, use the environment variable if available, otherwise use window.location.origin
+  // This ensures consistency with the server-side configuration
+  return process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin;
+};
+
 const authClient = createAuthClient({
-  baseURL: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
+  baseURL: getBaseURL(),
   basePath: '/api/auth',
 });
 
@@ -113,11 +124,42 @@ export async function isAuthenticated(): Promise<boolean> {
 /**
  * Login - redirects to Cognito authentication
  * This is the only authentication method available (Cognito only)
+ * 
+ * Note: The callbackURL parameter in Better Auth's signIn.social() is where the user
+ * should be redirected AFTER authentication completes. Better Auth automatically constructs
+ * the OAuth redirect_uri as ${baseURL}/api/auth/callback/cognito, which must match
+ * the callback URLs configured in Cognito.
  */
 export async function login(redirectUri?: string) {
+  // Store the intended post-auth redirect path if provided
+  if (redirectUri && typeof window !== "undefined") {
+    try {
+      const url = new URL(redirectUri);
+      const redirectPath = url.pathname + url.search + url.hash;
+      if (redirectPath && redirectPath !== "/") {
+        sessionStorage.setItem("authRedirect", redirectPath);
+      }
+    } catch (e) {
+      // If redirectUri is not a full URL, treat it as a path
+      if (redirectUri.startsWith("/")) {
+        sessionStorage.setItem("authRedirect", redirectUri);
+      }
+    }
+  }
+  
+  // Better Auth should construct the OAuth redirect_uri as ${baseURL}/api/auth/callback/cognito
+  // However, to ensure it matches Cognito configuration exactly, we pass the full callback URL
+  // The callbackURL must match exactly what's configured in Cognito User Pool Client
+  const baseURL = getBaseURL();
+  const oauthCallbackURL = `${baseURL}/api/auth/callback/cognito`;
+  
+  // Pass the exact OAuth callback URL that matches Cognito configuration
+  // This ensures the redirect_uri parameter in the OAuth request matches Cognito
+  // After authentication, Better Auth will redirect to the origin, and our useEffect
+  // will handle redirecting to the stored path from sessionStorage
   await authClient.signIn.social({
     provider: "cognito",
-    callbackURL: redirectUri || window.location.origin + window.location.pathname,
+    callbackURL: oauthCallbackURL,
   });
 }
 
