@@ -51,6 +51,16 @@ resource "null_resource" "build_and_push_docker" {
   ]
 }
 
+# Resolve the digest for the freshly pushed :latest image so Lambda is forced to update
+data "aws_ecr_image" "game_latest" {
+  repository_name = aws_ecr_repository.game.name
+  image_tag       = "latest"
+
+  depends_on = [
+    null_resource.build_and_push_docker
+  ]
+}
+
 # Lambda Function for Game App (using container image)
 # This is now the only deployable app - includes both game and scenario editor functionality
 resource "aws_lambda_function" "game" {
@@ -60,11 +70,9 @@ resource "aws_lambda_function" "game" {
   memory_size   = 1024  # Increased memory for faster initialization
   package_type  = "Image"
 
-  # Use :latest tag to always use the most recent image
-  # AWS Lambda supports both tags and digests for container images per AWS documentation
-  # Using :latest ensures deployments always get the newest image after build_and_push_docker runs
-  # The build script uses --format=docker to ensure Docker Image Manifest V2 Schema 2 format (Lambda-compatible)
-  image_uri = "${aws_ecr_repository.game.repository_url}:latest"
+  # Use the latest image digest so Lambda is updated on every deploy
+  # We still push :latest in the build script, but resolve the digest at apply time
+  image_uri = "${aws_ecr_repository.game.repository_url}@${data.aws_ecr_image.game_latest.image_digest}"
 
   # Note: Lambda Function URLs work directly with container images - no Lambda Web Adapter layer needed
 
@@ -121,6 +129,7 @@ resource "aws_lambda_function_url" "game" {
 # Resource-based policy for Lambda Function URL to allow public access
 # This is required even with authorization_type = "NONE" when accessed through CloudFront
 # Note: For Function URLs with authorization_type = "NONE", this permission allows any principal to invoke
+# Using principal = "*" allows CloudFront (and any other service) to invoke the Function URL
 resource "aws_lambda_permission" "game_function_url" {
   statement_id           = "AllowPublicInvoke"
   action                 = "lambda:InvokeFunctionUrl"

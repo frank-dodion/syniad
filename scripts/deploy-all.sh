@@ -6,8 +6,10 @@
 
 set -e
 
-# Clear terminal at start
-clear
+# Clear terminal at start only if stdout is a TTY
+if [ -t 1 ]; then
+  clear
+fi
 
 STAGE=${1:-dev}
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -73,7 +75,20 @@ fi
 echo -e "${GREEN}✓ Static assets deployed${NC}"
 echo ""
 
-# Step 4: Summary
+# Step 4: Invalidate CloudFront cache for static assets (ensures new chunks load)
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${YELLOW}Step 4: Invalidating CloudFront static asset cache...${NC}"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+cd "$PROJECT_ROOT"
+bash scripts/invalidate-cloudfront-cache.sh "$STAGE"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}✗ CloudFront invalidation failed${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ CloudFront invalidation requested${NC}"
+echo ""
+
+# Step 5: Summary
 echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║        Deployment Complete!            ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
@@ -104,8 +119,5 @@ fi
 if [ -n "$DIST_ID" ]; then
     echo -e "  ${GREEN}✓${NC} CloudFront ID:   ${DIST_ID}"
 fi
-echo ""
-echo -e "${YELLOW}Note: No cache invalidation needed - all routes use TTL=0 (no caching)${NC}"
-echo -e "${YELLOW}Static assets use hashed filenames, so new builds automatically use new URLs${NC}"
 echo ""
 

@@ -14,8 +14,8 @@ export default function Header() {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-gray-800 text-white px-8 py-4 flex justify-between items-center z-[1000] shadow-md">
-      <h1 className="text-xl font-semibold m-0">Scenario Editor</h1>
+    <header className="fixed top-0 left-0 right-0 bg-gray-800 text-white h-14 px-6 flex justify-between items-center z-[1000] shadow-md">
+      <h1 className="text-lg font-semibold m-0 leading-none">Scenario Editor</h1>
       <div className="flex items-center gap-4">
         {isLoading ? (
           <span>Checking...</span>

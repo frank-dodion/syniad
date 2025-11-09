@@ -40,6 +40,7 @@ resource "aws_s3_bucket_policy" "game_static" {
   depends_on = [
     aws_s3_bucket_public_access_block.game_static,
     aws_cloudfront_origin_access_control.game_static,
+    aws_cloudfront_distribution.frontend_new
   ]
 
   policy = jsonencode({
@@ -55,7 +56,7 @@ resource "aws_s3_bucket_policy" "game_static" {
         Resource = "${aws_s3_bucket.game_static.arn}/*"
         Condition = {
           StringEquals = {
-            "AWS:SourceArn" = "${aws_cloudfront_distribution.frontend.arn}"
+            "AWS:SourceArn" = "${aws_cloudfront_distribution.frontend_new.arn}"
           }
         }
       }

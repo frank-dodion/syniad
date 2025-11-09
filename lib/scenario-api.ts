@@ -5,7 +5,7 @@
 
 import { createAuthClient } from "better-auth/react";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dev.syniad.net';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Better Auth client for getting session tokens
 const authClient = typeof window !== 'undefined' 

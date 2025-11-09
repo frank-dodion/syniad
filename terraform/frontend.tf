@@ -29,12 +29,13 @@ resource "aws_s3_bucket_public_access_block" "frontend" {
 }
 
 # S3 Bucket Policy for CloudFront Origin Access Control
+# Updated to use new CloudFront distribution
 resource "aws_s3_bucket_policy" "frontend" {
   bucket = aws_s3_bucket.frontend.id
   depends_on = [
     aws_s3_bucket_public_access_block.frontend,
     aws_cloudfront_origin_access_control.frontend,
-    aws_cloudfront_distribution.frontend
+    aws_cloudfront_distribution.frontend_new
   ]
 
   policy = jsonencode({
@@ -50,7 +51,7 @@ resource "aws_s3_bucket_policy" "frontend" {
         Resource = "${aws_s3_bucket.frontend.arn}/*"
         Condition = {
           StringEquals = {
-            "AWS:SourceArn" = aws_cloudfront_distribution.frontend.arn
+            "AWS:SourceArn" = aws_cloudfront_distribution.frontend_new.arn
           }
         }
       }
@@ -112,121 +113,6 @@ resource "aws_cloudfront_origin_access_control" "frontend" {
   signing_protocol                  = "sigv4"
 }
 
-# CloudFront Distribution
-# Note: depends_on ensures CloudFront updates when Lambda Function URL changes
-resource "aws_cloudfront_distribution" "frontend" {
-  enabled             = true
-  is_ipv6_enabled     = true
-  default_root_object = "index.html"
-  # Include Lambda Function URL in comment to force update when Lambda changes
-  comment             = "${local.service_name} frontend distribution - Lambda: ${aws_lambda_function_url.game.function_url}"
-
-  aliases = [local.frontend_domain_name]
-
-  # Lambda Function URL origin (for HTML/API routes)
-  origin {
-    domain_name = replace(replace(aws_lambda_function_url.game.function_url, "https://", ""), "/", "")
-    origin_id   = "Lambda-Game"
-    custom_origin_config {
-      http_port              = 443
-      https_port             = 443
-      origin_protocol_policy = "https-only"
-      origin_ssl_protocols   = ["TLSv1.2"]
-      origin_read_timeout    = 60
-      origin_keepalive_timeout = 5
-    }
-  }
-
-  # S3 origin for static assets
-  origin {
-    domain_name              = aws_s3_bucket.game_static.bucket_regional_domain_name
-    origin_id                = "S3-Static-${aws_s3_bucket.game_static.id}"
-    origin_access_control_id = aws_cloudfront_origin_access_control.game_static.id
-  }
-
-  # Default behavior - Lambda Function URL origin (HTML/API routes)
-  # This handles all routes including /api/* with no caching (TTL=0) and proper header forwarding
-  default_cache_behavior {
-    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "Lambda-Game"
-    viewer_protocol_policy = "redirect-to-https"
-    compress               = true
-
-    # Use cache policy and origin request policy instead of forwarded_values
-    # This ensures Host header is set to origin domain, not forwarded from viewer
-    # Cache policy has TTL=0 so no caching occurs
-    cache_policy_id            = aws_cloudfront_cache_policy.no_cache.id
-    origin_request_policy_id   = aws_cloudfront_origin_request_policy.forward_all_except_host.id
-  }
-
-  # Cache behavior for static assets
-  ordered_cache_behavior {
-    path_pattern     = "/_next/static/*"
-    allowed_methods = ["GET", "HEAD", "OPTIONS"]
-    cached_methods  = ["GET", "HEAD"]
-    target_origin_id = "S3-Static-${aws_s3_bucket.game_static.id}"
-    viewer_protocol_policy = "redirect-to-https"
-    compress         = true
-
-    # Use cache policy for static assets (long cache TTL)
-    cache_policy_id = aws_cloudfront_cache_policy.static_cache.id
-  }
-
-  # No custom error responses - Next.js handles all routing server-side
-  # Authentication is handled in the Next.js app for both page routes and API endpoints
-
-  restrictions {
-    geo_restriction {
-      restriction_type = "none"
-    }
-  }
-
-  viewer_certificate {
-    acm_certificate_arn      = aws_acm_certificate_validation.frontend.certificate_arn
-    ssl_support_method       = "sni-only"
-    minimum_protocol_version = "TLSv1.2_2021"
-  }
-
-  depends_on = [
-    aws_acm_certificate_validation.frontend,
-    aws_lambda_function_url.game,
-    aws_lambda_function.game
-  ]
-
-  # Ensure CloudFront updates when Lambda Function URL changes
-  # The comment field includes the Lambda Function URL, so any change to Lambda
-  # will trigger a CloudFront distribution update
-  lifecycle {
-    create_before_destroy = false
-  }
-  
-  tags = local.common_tags
-}
-
-# Route 53 A record for frontend
-resource "aws_route53_record" "frontend" {
-  name    = local.frontend_domain_name
-  type    = "A"
-  zone_id = data.aws_route53_zone.main.zone_id
-
-  alias {
-    name                   = aws_cloudfront_distribution.frontend.domain_name
-    zone_id                = aws_cloudfront_distribution.frontend.hosted_zone_id
-    evaluate_target_health = false
-  }
-}
-
-# Route 53 AAAA record for frontend (IPv6)
-resource "aws_route53_record" "frontend_ipv6" {
-  name    = local.frontend_domain_name
-  type    = "AAAA"
-  zone_id = data.aws_route53_zone.main.zone_id
-
-  alias {
-    name                   = aws_cloudfront_distribution.frontend.domain_name
-    zone_id                = aws_cloudfront_distribution.frontend.hosted_zone_id
-    evaluate_target_health = false
-  }
-}
+# OLD CLOUDFRONT DISTRIBUTION - REMOVED (was not working)
+# Replaced by aws_cloudfront_distribution.frontend_new in cloudfront-new.tf
 

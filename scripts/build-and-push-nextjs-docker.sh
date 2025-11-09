@@ -8,11 +8,22 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Determine target stage (argument takes precedence, then Terraform output, default dev)
+REQUESTED_STAGE=${1:-}
+
 # Get AWS account ID and region from Terraform
 cd "$PROJECT_ROOT/terraform"
+
+if [ -n "$REQUESTED_STAGE" ]; then
+  STAGE="$REQUESTED_STAGE"
+  terraform workspace select "$STAGE" 2>/dev/null || terraform workspace new "$STAGE"
+else
+  STAGE=$(terraform output -raw stage 2>/dev/null || echo "dev")
+  terraform workspace select "$STAGE" 2>/dev/null || true
+fi
+
 AWS_ACCOUNT_ID=$(terraform output -raw aws_account_id 2>/dev/null || aws sts get-caller-identity --query Account --output text)
 AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "us-east-1")
-STAGE=$(terraform output -raw stage 2>/dev/null || echo "dev")
 
 SERVICE_NAME="syniad-${STAGE}"
 
@@ -20,14 +31,6 @@ echo "Building and pushing Next.js Docker images..."
 echo "AWS Account: $AWS_ACCOUNT_ID"
 echo "Region: $AWS_REGION"
 echo "Stage: $STAGE"
-
-# Build Next.js app first to generate static files
-# Note: Static assets are deployed separately in deploy-all.sh, not here
-echo ""
-echo "Building Next.js app to generate static files..."
-cd "$PROJECT_ROOT"
-npm ci --legacy-peer-deps
-npm run build
 
 # Pre-pull Lambda adapter image to avoid rate limits during Docker build
 echo ""

@@ -56,14 +56,19 @@ fi
 
 echo -e "${GREEN}Found distribution: ${DISTRIBUTION_ID}${NC}"
 
-# Note: CloudFront invalidation is not needed because:
-# - API routes (/api/*) use no_cache policy with TTL=0 (not cached)
-# - HTML pages (/) use no_cache policy with TTL=0 (not cached)
-# - Static assets (/_next/static/*) use hashed filenames (new builds = new filenames)
-# 
-# Since nothing is cached, invalidation is unnecessary and would be wasteful.
-# If you need to force refresh, users can do a hard refresh (Ctrl+F5 / Cmd+Shift+R).
+echo -e "${YELLOW}Creating CloudFront invalidation for static assets...${NC}"
 
-echo -e "${YELLOW}Note: No cache invalidation needed - all routes use TTL=0 (no caching)${NC}"
-echo -e "${YELLOW}Static assets use hashed filenames, so new builds automatically use new URLs${NC}"
+INVALIDATION_ID=$(aws cloudfront create-invalidation \
+  --distribution-id "$DISTRIBUTION_ID" \
+  --paths "/_next/static/*" \
+  --query 'Invalidation.Id' \
+  --output text)
+
+if [ -z "$INVALIDATION_ID" ]; then
+  echo -e "${RED}✗ Failed to create CloudFront invalidation${NC}"
+  exit 1
+fi
+
+echo -e "${GREEN}✓ Invalidation requested (ID: ${INVALIDATION_ID})${NC}"
+echo -e "${YELLOW}Note: Invalidation may take a few minutes to propagate globally${NC}"
 

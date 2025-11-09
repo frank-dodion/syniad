@@ -34,6 +34,7 @@ export default function HexGrid({
 }: HexGridProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [selectedHex, setSelectedHex] = useState<{ row: number; column: number } | null>(null);
+  const [size, setSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
 
   useEffect(() => {
     if (!svgRef.current || columns === 0 || rows === 0) return;
@@ -49,76 +50,122 @@ export default function HexGrid({
     });
 
     // Calculate hex size
-    const hexSize = 40;
-    const hexWidth = hexSize * Math.sqrt(3);
-    const hexHeight = hexSize * 2;
+    const hexSize = 28; // distance from center to left/right vertex
+    const hexWidth = hexSize * 2;
+    const hexHeight = Math.sqrt(3) * hexSize;
+    const horizontalSpacing = hexSize * 1.5; // distance between column centers
+    const verticalSpacing = hexHeight;
 
-    // Calculate viewBox
-    const maxX = columns * hexWidth * 0.75 + hexWidth * 0.375;
-    const maxY = rows * hexHeight * 0.75;
+    // Calculate viewBox for flat-topped layout (even-q)
+    const maxX = (columns - 1) * horizontalSpacing + hexWidth;
+    const maxY =
+      (rows - 1) * verticalSpacing +
+      hexHeight +
+      (columns > 1 ? hexHeight / 2 : 0);
     svg.setAttribute('viewBox', `0 0 ${maxX} ${maxY}`);
+    svg.setAttribute('width', `${maxX}`);
+    svg.setAttribute('height', `${maxY}`);
 
-    // Render each hex
+    setSize((prev) =>
+      prev.width === maxX && prev.height === maxY ? prev : { width: maxX, height: maxY }
+    );
+
+    const baseLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    baseLayer.setAttribute('id', 'hex-base-layer');
+    const interactionLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    interactionLayer.setAttribute('id', 'hex-interaction-layer');
+
+    const makeHexPoints = (cx: number, cy: number) => [
+      `${cx + hexSize},${cy}`,
+      `${cx + hexSize / 2},${cy + hexHeight / 2}`,
+      `${cx - hexSize / 2},${cy + hexHeight / 2}`,
+      `${cx - hexSize},${cy}`,
+      `${cx - hexSize / 2},${cy - hexHeight / 2}`,
+      `${cx + hexSize / 2},${cy - hexHeight / 2}`,
+    ];
+
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < columns; col++) {
         const key = `${row},${col}`;
         const hex = hexMap.get(key) || { row, column: col, terrain: 'clear' };
 
-        // Calculate position (offset rows for hex grid)
-        const x = col * hexWidth * 0.75 + (row % 2 === 1 ? hexWidth * 0.375 : 0);
-        const y = row * hexHeight * 0.75;
+        const x = col * horizontalSpacing;
+        const y = row * verticalSpacing + (col % 2 === 1 ? hexHeight / 2 : 0);
 
-        // Create hexagon group
-        const hexGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        hexGroup.setAttribute('class', 'hex-group');
-        hexGroup.setAttribute('data-row', row.toString());
-        hexGroup.setAttribute('data-column', col.toString());
+        const centerX = x + hexWidth / 2;
+        const centerY = y + hexHeight / 2;
+        const points = makeHexPoints(centerX, centerY);
 
-        // Create hexagon polygon
-        const points: string[] = [];
-        for (let i = 0; i < 6; i++) {
-          const angle = (Math.PI / 3) * i;
-          const px = x + hexSize + hexSize * Math.cos(angle);
-          const py = y + hexSize + hexSize * Math.sin(angle);
-          points.push(`${px},${py}`);
-        }
+        const basePolygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        basePolygon.setAttribute('points', points.join(' '));
+        basePolygon.setAttribute('fill', TERRAIN_COLORS[hex.terrain] || TERRAIN_COLORS.clear);
+        basePolygon.setAttribute('stroke', '#333');
+        basePolygon.setAttribute('stroke-width', '0.6');
+        basePolygon.setAttribute('class', 'hex-base');
+        basePolygon.setAttribute('pointer-events', 'none');
 
-        const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-        polygon.setAttribute('points', points.join(' '));
-        polygon.setAttribute('fill', TERRAIN_COLORS[hex.terrain] || TERRAIN_COLORS.clear);
-        polygon.setAttribute('stroke', '#333');
-        polygon.setAttribute('stroke-width', '1');
-        polygon.setAttribute('class', 'hex-polygon');
-        polygon.style.cursor = 'pointer';
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        const labelX = centerX;
+        const labelY = centerY - hexHeight / 2; // Position at top vertex of hex
+        label.setAttribute('x', labelX.toString());
+        label.setAttribute('y', labelY.toString());
+        label.setAttribute('fill', '#1f2937');
+        label.setAttribute('font-size', (hexSize * 0.35).toString());
+        label.setAttribute(
+          'font-family',
+          'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+        );
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('dominant-baseline', 'hanging'); // Align text to top
+        label.setAttribute('pointer-events', 'none');
+        label.textContent = `${col + 1}-${row + 1}`;
 
-        // Add hover effect
-        polygon.addEventListener('mouseenter', () => {
-          polygon.setAttribute('stroke-width', '2');
-          polygon.setAttribute('stroke', '#3498db');
+        baseLayer.appendChild(basePolygon);
+        baseLayer.appendChild(label);
+
+        const interactionPolygon = document.createElementNS(
+          'http://www.w3.org/2000/svg',
+          'polygon'
+        );
+        interactionPolygon.setAttribute('points', points.join(' '));
+        interactionPolygon.setAttribute('fill', 'transparent');
+        interactionPolygon.setAttribute('stroke', 'transparent');
+        interactionPolygon.setAttribute('stroke-width', '0');
+        interactionPolygon.setAttribute('class', 'hex-interaction');
+        interactionPolygon.style.cursor = 'pointer';
+
+        const applySelectionStyles = () => {
+          if (selectedHex && selectedHex.row === row && selectedHex.column === col) {
+            interactionPolygon.setAttribute('stroke', '#e74c3c');
+            interactionPolygon.setAttribute('stroke-width', '2.5');
+          } else {
+            interactionPolygon.setAttribute('stroke', 'transparent');
+            interactionPolygon.setAttribute('stroke-width', '0');
+          }
+        };
+
+        interactionPolygon.addEventListener('mouseenter', () => {
+          interactionPolygon.setAttribute('stroke', '#3498db');
+          interactionPolygon.setAttribute('stroke-width', '2');
         });
-        polygon.addEventListener('mouseleave', () => {
-          polygon.setAttribute('stroke-width', '1');
-          polygon.setAttribute('stroke', '#333');
+        interactionPolygon.addEventListener('mouseleave', () => {
+          applySelectionStyles();
         });
-
-        // Add click handler
-        polygon.addEventListener('click', () => {
+        interactionPolygon.addEventListener('click', () => {
           setSelectedHex({ row, column: col });
           if (onHexClick) {
             onHexClick(row, col);
           }
         });
 
-        // Highlight selected hex
-        if (selectedHex && selectedHex.row === row && selectedHex.column === col) {
-          polygon.setAttribute('stroke-width', '3');
-          polygon.setAttribute('stroke', '#e74c3c');
-        }
+        applySelectionStyles();
 
-        hexGroup.appendChild(polygon);
-        svg.appendChild(hexGroup);
+        interactionLayer.appendChild(interactionPolygon);
       }
     }
+
+    svg.appendChild(baseLayer);
+    svg.appendChild(interactionLayer);
   }, [columns, rows, hexes, selectedTerrain, selectedHex, onHexClick]);
 
   if (columns === 0 || rows === 0) {
@@ -130,8 +177,22 @@ export default function HexGrid({
   }
 
   return (
-    <div className="hex-grid-container">
-      <svg ref={svgRef} className="hex-grid-svg" preserveAspectRatio="xMidYMid meet" />
+    <div
+      className="hex-grid-container"
+      style={{
+        width: size.width ? `${size.width}px` : undefined,
+        height: size.height ? `${size.height}px` : undefined,
+      }}
+    >
+      <svg
+        ref={svgRef}
+        className="hex-grid-svg"
+        preserveAspectRatio="xMidYMid meet"
+        style={{
+          width: size.width ? `${size.width}px` : undefined,
+          height: size.height ? `${size.height}px` : undefined,
+        }}
+      />
     </div>
   );
 }

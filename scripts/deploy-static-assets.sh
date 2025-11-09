@@ -29,16 +29,29 @@ fi
 
 echo "Deploying static assets to S3..."
 
-# Deploy app static assets
-echo "Deploying app static assets to s3://$BUCKET_GAME..."
-cd "$PROJECT_ROOT"
+# Determine AWS account and region (needed to locate local Docker image)
+AWS_ACCOUNT_ID=$(terraform output -raw aws_account_id 2>/dev/null || aws sts get-caller-identity --query Account --output text)
+AWS_REGION=$(terraform output -raw aws_region 2>/dev/null || echo "us-east-1")
 
-if [ -d ".next/static" ]; then
-  aws s3 sync .next/static s3://$BUCKET_GAME/_next/static --delete
-  echo "✓ App static assets deployed"
-else
-  echo "Warning: .next/static directory not found. Run 'npm run build' first."
+LOCAL_IMAGE="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/syniad-${STAGE}-game:latest"
+
+echo "Preparing static assets from Docker image ${LOCAL_IMAGE}..."
+
+if ! docker image inspect "$LOCAL_IMAGE" >/dev/null 2>&1; then
+  echo "Error: Docker image ${LOCAL_IMAGE} not found locally. Run the deployment build step first."
+  exit 1
 fi
+
+EXTRACT_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t "next-static")
+CONTAINER_ID=$(docker create "$LOCAL_IMAGE")
+docker cp "${CONTAINER_ID}:/var/task/.next/static" "${EXTRACT_DIR}/static"
+docker rm "$CONTAINER_ID" >/dev/null
+
+echo "Deploying app static assets to s3://$BUCKET_GAME..."
+aws s3 sync "${EXTRACT_DIR}/static" "s3://${BUCKET_GAME}/_next/static"
+echo "✓ App static assets deployed"
+
+rm -rf "$EXTRACT_DIR"
 
 echo "Static assets deployment completed!"
 

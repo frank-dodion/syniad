@@ -40,9 +40,9 @@ services:
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
       AWS_PROFILE: ${AWS_PROFILE:-}
       # DynamoDB Table Names
-      GAMES_TABLE: ${GAMES_TABLE:-}
-      PLAYER_GAMES_TABLE: ${PLAYER_GAMES_TABLE:-}
-      SCENARIOS_TABLE: ${SCENARIOS_TABLE:-}
-      # Set LOCAL_MODE=false to use real DynamoDB (default behavior)
-      LOCAL_MODE: ${LOCAL_MODE:-false}
+      GAMES_TABLE: ${GAMES_TABLE:-syniad-dev-games}
+      PLAYER_GAMES_TABLE: ${PLAYER_GAMES_TABLE:-syniad-dev-player-games}
+      SCENARIOS_TABLE: ${SCENARIOS_TABLE:-syniad-dev-scenarios}
+      # Default to LOCAL_MODE=true so the API uses in-memory mocks unless overridden
+      LOCAL_MODE: ${LOCAL_MODE:-true}
     restart: unless-stopped
