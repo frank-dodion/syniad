@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 
 const TERRAIN_COLORS: Record<string, string> = {
-  clear: '#e8e8e8',
-  mountain: '#8b7355',
-  forest: '#2d5016',
-  water: '#4a90e2',
-  desert: '#f4a460',
-  swamp: '#556b2f',
+  clear: "#e8e8e8",
+  mountain: "#8b7355",
+  forest: "#2d5016",
+  water: "#4a90e2",
+  desert: "#f4a460",
+  swamp: "#556b2f",
 };
 
 interface Hex {
@@ -23,23 +23,48 @@ interface HexGridProps {
   hexes?: Hex[];
   selectedTerrain?: string;
   onHexClick?: (row: number, column: number) => void;
+  onHexHover?: (row: number | null, column: number | null) => void;
+  onHexSelect?: (row: number | null, column: number | null) => void;
 }
 
 export default function HexGrid({
   columns,
   rows,
   hexes = [],
-  selectedTerrain = 'clear',
+  selectedTerrain = "clear",
   onHexClick,
+  onHexHover,
+  onHexSelect,
 }: HexGridProps) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [selectedHex, setSelectedHex] = useState<{ row: number; column: number } | null>(null);
+  const [selectedHex, setSelectedHex] = useState<{
+    row: number;
+    column: number;
+  } | null>(null);
+  const selectedHexRef = useRef<{ row: number; column: number } | null>(null);
+  const [size, setSize] = useState<{ width: number; height: number }>({
+    width: 0,
+    height: 0,
+  });
+
+  // Refs for callbacks to avoid dependency issues
+  const onHexClickRef = useRef(onHexClick);
+  const onHexHoverRef = useRef(onHexHover);
+  const onHexSelectRef = useRef(onHexSelect);
+
+  // Keep refs in sync
+  useEffect(() => {
+    selectedHexRef.current = selectedHex;
+    onHexClickRef.current = onHexClick;
+    onHexHoverRef.current = onHexHover;
+    onHexSelectRef.current = onHexSelect;
+  }, [selectedHex, onHexClick, onHexHover, onHexSelect]);
 
   useEffect(() => {
     if (!svgRef.current || columns === 0 || rows === 0) return;
 
     const svg = svgRef.current;
-    svg.innerHTML = '';
+    svg.innerHTML = "";
 
     // Create a map of hexes for quick lookup
     const hexMap = new Map<string, Hex>();
@@ -49,77 +74,252 @@ export default function HexGrid({
     });
 
     // Calculate hex size
-    const hexSize = 40;
-    const hexWidth = hexSize * Math.sqrt(3);
-    const hexHeight = hexSize * 2;
+    const hexSize = 28; // distance from center to left/right vertex
+    const hexWidth = hexSize * 2;
+    const hexHeight = Math.sqrt(3) * hexSize;
+    const horizontalSpacing = hexSize * 1.5; // distance between column centers
+    const verticalSpacing = hexHeight;
 
-    // Calculate viewBox
-    const maxX = columns * hexWidth * 0.75 + hexWidth * 0.375;
-    const maxY = rows * hexHeight * 0.75;
-    svg.setAttribute('viewBox', `0 0 ${maxX} ${maxY}`);
+    // Calculate viewBox for flat-topped layout (even-q)
+    // Add padding to account for stroke width (selection outline is 2.5px, so add 3px padding)
+    const padding = 3;
+    const baseMaxX = (columns - 1) * horizontalSpacing + hexWidth;
+    const baseMaxY =
+      (rows - 1) * verticalSpacing +
+      hexHeight +
+      (columns > 1 ? hexHeight / 2 : 0);
+    const maxX = baseMaxX + padding * 2;
+    const maxY = baseMaxY + padding * 2;
+    svg.setAttribute("viewBox", `${-padding} ${-padding} ${maxX} ${maxY}`);
+    svg.setAttribute("width", `${maxX}`);
+    svg.setAttribute("height", `${maxY}`);
 
-    // Render each hex
+    setSize((prev) =>
+      prev.width === maxX && prev.height === maxY
+        ? prev
+        : { width: maxX, height: maxY }
+    );
+
+    const baseLayer = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "g"
+    );
+    baseLayer.setAttribute("id", "hex-base-layer");
+    const selectionLayer = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "g"
+    );
+    selectionLayer.setAttribute("id", "hex-selection-layer");
+    const hoverLayer = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "g"
+    );
+    hoverLayer.setAttribute("id", "hex-hover-layer");
+    const detectionLayer = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "g"
+    );
+    detectionLayer.setAttribute("id", "hex-detection-layer");
+
+    const makeHexPoints = (cx: number, cy: number) => [
+      `${cx + hexSize},${cy}`,
+      `${cx + hexSize / 2},${cy + hexHeight / 2}`,
+      `${cx - hexSize / 2},${cy + hexHeight / 2}`,
+      `${cx - hexSize},${cy}`,
+      `${cx - hexSize / 2},${cy - hexHeight / 2}`,
+      `${cx + hexSize / 2},${cy - hexHeight / 2}`,
+    ];
+
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < columns; col++) {
         const key = `${row},${col}`;
-        const hex = hexMap.get(key) || { row, column: col, terrain: 'clear' };
+        const hex = hexMap.get(key) || { row, column: col, terrain: "clear" };
 
-        // Calculate position (offset rows for hex grid)
-        const x = col * hexWidth * 0.75 + (row % 2 === 1 ? hexWidth * 0.375 : 0);
-        const y = row * hexHeight * 0.75;
+        const x = col * horizontalSpacing;
+        const y = row * verticalSpacing + (col % 2 === 1 ? hexHeight / 2 : 0);
 
-        // Create hexagon group
-        const hexGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        hexGroup.setAttribute('class', 'hex-group');
-        hexGroup.setAttribute('data-row', row.toString());
-        hexGroup.setAttribute('data-column', col.toString());
+        const centerX = x + hexWidth / 2;
+        const centerY = y + hexHeight / 2;
+        const points = makeHexPoints(centerX, centerY);
 
-        // Create hexagon polygon
-        const points: string[] = [];
-        for (let i = 0; i < 6; i++) {
-          const angle = (Math.PI / 3) * i;
-          const px = x + hexSize + hexSize * Math.cos(angle);
-          const py = y + hexSize + hexSize * Math.sin(angle);
-          points.push(`${px},${py}`);
+        const basePolygon = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "polygon"
+        );
+        basePolygon.setAttribute("points", points.join(" "));
+        basePolygon.setAttribute(
+          "fill",
+          TERRAIN_COLORS[hex.terrain] || TERRAIN_COLORS.clear
+        );
+        basePolygon.setAttribute("stroke", "#333");
+        basePolygon.setAttribute("stroke-width", "0.6");
+        basePolygon.setAttribute("class", "hex-base");
+        basePolygon.setAttribute("pointer-events", "none");
+
+        const label = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "text"
+        );
+        const labelX = centerX;
+        const labelY = centerY - hexHeight / 2 + 4; // Position slightly below top vertex to avoid border
+        label.setAttribute("x", labelX.toString());
+        label.setAttribute("y", labelY.toString());
+        label.setAttribute("fill", "#1f2937");
+        label.setAttribute("font-size", (hexSize * 0.35).toString());
+        label.setAttribute(
+          "font-family",
+          'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+        );
+        label.setAttribute("text-anchor", "middle");
+        label.setAttribute("dominant-baseline", "hanging"); // Align text to top
+        label.setAttribute("pointer-events", "none");
+        label.textContent = `${col + 1}-${row + 1}`;
+
+        baseLayer.appendChild(basePolygon);
+        baseLayer.appendChild(label);
+
+        // Selection polygon - yellow solid outline (always visible when selected)
+        const selectionPolygon = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "polygon"
+        );
+        selectionPolygon.setAttribute("points", points.join(" "));
+        selectionPolygon.setAttribute("fill", "transparent");
+        selectionPolygon.setAttribute("id", `selection-${row}-${col}`);
+        const isSelected =
+          selectedHex && selectedHex.row === row && selectedHex.column === col;
+        if (isSelected) {
+          selectionPolygon.setAttribute("stroke", "#FFEB3B"); // Bright yellow for selected
+          selectionPolygon.setAttribute("stroke-width", "2.5");
+          selectionPolygon.setAttribute("opacity", "1");
+        } else {
+          selectionPolygon.setAttribute("stroke", "#FFEB3B"); // Keep stroke color but make invisible
+          selectionPolygon.setAttribute("stroke-width", "2.5");
+          selectionPolygon.setAttribute("opacity", "0"); // Use opacity instead of transparent
         }
+        selectionPolygon.setAttribute("pointer-events", "none"); // Don't interfere with hover/click
 
-        const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-        polygon.setAttribute('points', points.join(' '));
-        polygon.setAttribute('fill', TERRAIN_COLORS[hex.terrain] || TERRAIN_COLORS.clear);
-        polygon.setAttribute('stroke', '#333');
-        polygon.setAttribute('stroke-width', '1');
-        polygon.setAttribute('class', 'hex-polygon');
-        polygon.style.cursor = 'pointer';
+        // Hover polygon - white dashed outline (only visible on hover)
+        const hoverPolygon = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "polygon"
+        );
+        hoverPolygon.setAttribute("points", points.join(" "));
+        hoverPolygon.setAttribute("fill", "transparent");
+        hoverPolygon.setAttribute("stroke", "transparent");
+        hoverPolygon.setAttribute("stroke-width", "0");
+        hoverPolygon.setAttribute("id", `hover-${row}-${col}`);
+        hoverPolygon.setAttribute("pointer-events", "none"); // Don't interfere with detection
 
-        // Add hover effect
-        polygon.addEventListener('mouseenter', () => {
-          polygon.setAttribute('stroke-width', '2');
-          polygon.setAttribute('stroke', '#3498db');
-        });
-        polygon.addEventListener('mouseleave', () => {
-          polygon.setAttribute('stroke-width', '1');
-          polygon.setAttribute('stroke', '#333');
-        });
+        // Detection polygon - completely transparent, handles all events
+        const detectionPolygon = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "polygon"
+        );
+        detectionPolygon.setAttribute("points", points.join(" "));
+        detectionPolygon.setAttribute("fill", "transparent");
+        detectionPolygon.setAttribute("stroke", "transparent");
+        detectionPolygon.setAttribute("stroke-width", "0");
+        detectionPolygon.setAttribute("id", `detection-${row}-${col}`);
+        detectionPolygon.style.cursor = "pointer";
 
-        // Add click handler
-        polygon.addEventListener('click', () => {
-          setSelectedHex({ row, column: col });
-          if (onHexClick) {
-            onHexClick(row, col);
+        // Event handlers on detection layer - update visual layers below
+        detectionPolygon.addEventListener("mouseenter", () => {
+          const hoverEl = svg.querySelector(
+            `#hover-${row}-${col}`
+          ) as SVGPolygonElement;
+          if (hoverEl) {
+            hoverEl.setAttribute("stroke", "#ffffff"); // White for hover
+            hoverEl.setAttribute("stroke-width", "2");
+            hoverEl.setAttribute("stroke-dasharray", "5,5"); // Dashed line for hover
+          }
+          if (onHexHoverRef.current) {
+            onHexHoverRef.current(row, col);
           }
         });
 
-        // Highlight selected hex
-        if (selectedHex && selectedHex.row === row && selectedHex.column === col) {
-          polygon.setAttribute('stroke-width', '3');
-          polygon.setAttribute('stroke', '#e74c3c');
-        }
+        detectionPolygon.addEventListener("mouseleave", () => {
+          const hoverEl = svg.querySelector(
+            `#hover-${row}-${col}`
+          ) as SVGPolygonElement;
+          if (hoverEl) {
+            hoverEl.setAttribute("stroke", "transparent");
+            hoverEl.setAttribute("stroke-width", "0");
+          }
+          if (onHexHoverRef.current) {
+            onHexHoverRef.current(null, null);
+          }
+        });
 
-        hexGroup.appendChild(polygon);
-        svg.appendChild(hexGroup);
+        detectionPolygon.addEventListener("click", (e) => {
+          e.stopPropagation();
+
+          // Always allow terrain changes (onHexClick) - controlled by activeTab in parent
+          if (onHexClickRef.current) {
+            onHexClickRef.current(row, col);
+          }
+
+          // Always allow selection (hover and selection work regardless of tab)
+          const currentSelected = selectedHexRef.current;
+          const isCurrentlySelected =
+            currentSelected &&
+            currentSelected.row === row &&
+            currentSelected.column === col;
+          const newSelectedHex = isCurrentlySelected
+            ? null
+            : { row, column: col };
+
+          // Immediately update the ref so callbacks have correct value
+          selectedHexRef.current = newSelectedHex;
+
+          // Update state
+          setSelectedHex(newSelectedHex);
+
+          // Immediately update visual selection for all hexes
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < columns; c++) {
+              const selEl = svg.querySelector(
+                `#selection-${r}-${c}`
+              ) as SVGPolygonElement;
+              if (selEl) {
+                if (
+                  newSelectedHex &&
+                  newSelectedHex.row === r &&
+                  newSelectedHex.column === c
+                ) {
+                  selEl.setAttribute("stroke", "#FFEB3B");
+                  selEl.setAttribute("stroke-width", "2.5");
+                  selEl.setAttribute("opacity", "1");
+                } else {
+                  selEl.setAttribute("stroke", "#FFEB3B");
+                  selEl.setAttribute("stroke-width", "2.5");
+                  selEl.setAttribute("opacity", "0");
+                }
+              }
+            }
+          }
+
+          // Call selection callback
+          if (onHexSelectRef.current) {
+            const rowVal = newSelectedHex?.row ?? null;
+            const colVal = newSelectedHex?.column ?? null;
+            onHexSelectRef.current(rowVal, colVal);
+          }
+        });
+
+        // Add to layers in order (bottom to top)
+        selectionLayer.appendChild(selectionPolygon);
+        hoverLayer.appendChild(hoverPolygon);
+        detectionLayer.appendChild(detectionPolygon);
       }
     }
-  }, [columns, rows, hexes, selectedTerrain, selectedHex, onHexClick]);
+
+    // Append layers in order (bottom to top)
+    svg.appendChild(baseLayer);
+    svg.appendChild(selectionLayer);
+    svg.appendChild(hoverLayer);
+    svg.appendChild(detectionLayer);
+  }, [columns, rows, hexes, selectedTerrain, selectedHex]);
 
   if (columns === 0 || rows === 0) {
     return (
@@ -130,9 +330,22 @@ export default function HexGrid({
   }
 
   return (
-    <div className="hex-grid-container">
-      <svg ref={svgRef} className="hex-grid-svg" preserveAspectRatio="xMidYMid meet" />
+    <div
+      className="hex-grid-container"
+      style={{
+        width: size.width ? `${size.width}px` : undefined,
+        height: size.height ? `${size.height}px` : undefined,
+      }}
+    >
+      <svg
+        ref={svgRef}
+        className="hex-grid-svg"
+        preserveAspectRatio="xMidYMid meet"
+        style={{
+          width: size.width ? `${size.width}px` : undefined,
+          height: size.height ? `${size.height}px` : undefined,
+        }}
+      />
     </div>
   );
 }
-

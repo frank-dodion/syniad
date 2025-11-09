@@ -5,7 +5,7 @@
 
 import { createAuthClient } from "better-auth/react";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dev.syniad.net';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Better Auth client for getting session tokens
 const authClient = typeof window !== 'undefined' 
@@ -52,15 +52,40 @@ async function getAccessToken(): Promise<string | null> {
       ? (sessionResponse as any).data
       : (sessionResponse as any);
     
-    const idToken = sessionData?.session?.idToken || sessionData?.idToken || null;
+    // Check if user is authenticated
+    if (!sessionData?.user) {
+      // No session - user not logged in, return null silently
+      return null;
+    }
     
+    // Try multiple possible paths for the ID token
+    // Better Auth client might return: { data: { session: { idToken, ... }, user: {...} } }
+    // or: { data: { idToken, user: {...} } }
+    // or: { session: { idToken, ... }, user: {...} }
+    let idToken = sessionData?.session?.idToken 
+      || sessionData?.idToken 
+      || (sessionData?.session && (sessionData.session as any).idToken)
+      || null;
+    
+    // If ID token is not in the session data, try fetching it from the session token endpoint
+    // This endpoint extracts the ID token from the server-side session
     if (!idToken) {
-      console.warn('[Scenario API Client] No ID token found in session');
+      try {
+        const tokenResponse = await fetch('/api/docs/session-token', {
+          credentials: 'include'
+        });
+        const tokenData = await tokenResponse.json();
+        if (tokenData.authenticated && tokenData.token) {
+          idToken = tokenData.token;
+        }
+      } catch (fetchError) {
+        // Silently fail - we'll try without token and let the API return 401
+      }
     }
     
     return idToken;
   } catch (e) {
-    console.error('[Scenario API Client] Error getting access token:', e);
+    // Silently return null - the API will handle authentication errors
     return null;
   }
 }

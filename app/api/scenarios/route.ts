@@ -17,9 +17,14 @@ export async function GET(request: NextRequest) {
   try {
     const user = await extractUserIdentity(request);
     
+    console.log('[scenarios/GET] User identity:', user ? `userId=${user.userId}` : 'null');
+    
     if (!user || !user.userId) {
+      console.log('[scenarios/GET] Authentication check failed - returning 401');
       return createErrorResponse(401, 'Authentication required');
     }
+    
+    console.log('[scenarios/GET] Authentication check passed - proceeding with request');
     
     const { searchParams } = new URL(request.url);
     const validation = validateQueryParams(contract.getScenarios, searchParams);

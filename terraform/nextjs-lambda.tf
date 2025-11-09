@@ -40,7 +40,7 @@ resource "null_resource" "build_and_push_docker" {
   }
 
   provisioner "local-exec" {
-    command     = "cd ${path.module}/.. && bash scripts/build-and-push-nextjs-docker.sh"
+    command     = "cd ${path.module}/.. && bash scripts/build-and-push-nextjs-docker.sh ${var.stage}"
     on_failure  = continue
     interpreter = ["bash", "-c"]
   }
@@ -48,6 +48,16 @@ resource "null_resource" "build_and_push_docker" {
   depends_on = [
     aws_ecr_repository.game,
     null_resource.deploy_static_assets
+  ]
+}
+
+# Resolve the digest for the freshly pushed :latest image so Lambda is forced to update
+data "aws_ecr_image" "game_latest" {
+  repository_name = aws_ecr_repository.game.name
+  image_tag       = "latest"
+
+  depends_on = [
+    null_resource.build_and_push_docker
   ]
 }
 
@@ -60,9 +70,9 @@ resource "aws_lambda_function" "game" {
   memory_size   = 1024  # Increased memory for faster initialization
   package_type  = "Image"
 
-  # Use specific image digest to avoid OCI index manifest issues
-  # Extract actual manifest digest from: aws ecr batch-get-image --repository-name syniad-dev-game --image-ids imageTag=latest --query 'images[0].imageManifest' | jq -r '.manifests[0].digest'
-  image_uri = "${aws_ecr_repository.game.repository_url}@sha256:bcd0400c069fd61dbcf5584f2904de741d15b65b1c6fa2552d367e566bf9aa5b"
+  # Use the latest image digest so Lambda is updated on every deploy
+  # We still push :latest in the build script, but resolve the digest at apply time
+  image_uri = "${aws_ecr_repository.game.repository_url}@${data.aws_ecr_image.game_latest.image_digest}"
 
   # Note: Lambda Function URLs work directly with container images - no Lambda Web Adapter layer needed
 
@@ -105,11 +115,13 @@ resource "aws_lambda_function_url" "game" {
   function_name      = aws_lambda_function.game.function_name
   authorization_type = "NONE"
   cors {
-    allow_credentials = true
+    # Note: allow_credentials cannot be true with allow_origins = ["*"]
+    # Since we use Bearer token auth (not cookies), we don't need credentials
+    allow_credentials = false
     allow_origins     = ["*"]
     allow_methods     = ["*"]
     allow_headers     = ["*"]
-    expose_headers    = ["*"]
+    expose_headers   = ["*"]
     max_age           = 300
   }
 }
@@ -117,6 +129,7 @@ resource "aws_lambda_function_url" "game" {
 # Resource-based policy for Lambda Function URL to allow public access
 # This is required even with authorization_type = "NONE" when accessed through CloudFront
 # Note: For Function URLs with authorization_type = "NONE", this permission allows any principal to invoke
+# Using principal = "*" allows CloudFront (and any other service) to invoke the Function URL
 resource "aws_lambda_permission" "game_function_url" {
   statement_id           = "AllowPublicInvoke"
   action                 = "lambda:InvokeFunctionUrl"

@@ -21,6 +21,15 @@ echo -e "${BLUE}Invalidating CloudFront cache...${NC}"
 
 cd "$PROJECT_ROOT/terraform"
 
+# Select the correct workspace before reading outputs
+if [ "$STAGE" = "dev" ]; then
+    echo -e "${YELLOW}Switched to workspace \"dev\".${NC}"
+    terraform workspace select dev 2>/dev/null || true
+elif [ "$STAGE" = "prod" ]; then
+    echo -e "${YELLOW}Switched to workspace \"prod\".${NC}"
+    terraform workspace select prod 2>/dev/null || true
+fi
+
 # Get CloudFront distribution ID
 DISTRIBUTION_ID=$(terraform output -raw frontend_cloudfront_distribution_id 2>/dev/null || echo "")
 
@@ -47,25 +56,19 @@ fi
 
 echo -e "${GREEN}Found distribution: ${DISTRIBUTION_ID}${NC}"
 
-# Invalidate API paths and root
-PATHS=(
-  "/api/*"
-  "/"
-)
-
-echo -e "${YELLOW}Creating invalidation for paths: ${PATHS[*]}${NC}"
+echo -e "${YELLOW}Creating CloudFront invalidation for static assets...${NC}"
 
 INVALIDATION_ID=$(aws cloudfront create-invalidation \
   --distribution-id "$DISTRIBUTION_ID" \
-  --paths "${PATHS[@]}" \
+  --paths "/_next/static/*" \
   --query 'Invalidation.Id' \
-  --output text 2>/dev/null)
+  --output text)
 
-if [ -n "$INVALIDATION_ID" ]; then
-  echo -e "${GREEN}✓ Invalidation created: ${INVALIDATION_ID}${NC}"
-  echo -e "${YELLOW}Note: CloudFront invalidations typically take 1-2 minutes to complete${NC}"
-else
-  echo -e "${RED}✗ Failed to create invalidation${NC}"
+if [ -z "$INVALIDATION_ID" ]; then
+  echo -e "${RED}✗ Failed to create CloudFront invalidation${NC}"
   exit 1
 fi
+
+echo -e "${GREEN}✓ Invalidation requested (ID: ${INVALIDATION_ID})${NC}"
+echo -e "${YELLOW}Note: Invalidation may take a few minutes to propagate globally${NC}"
 

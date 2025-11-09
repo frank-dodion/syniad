@@ -1,4 +1,33 @@
 import { betterAuth } from "better-auth";
+import { logger as betterAuthLogger } from "@better-auth/core/env";
+
+const originalConsoleWarn = console.warn;
+console.warn = (...args: unknown[]) => {
+  if (
+    args.length > 0 &&
+    typeof args[0] === "string" &&
+    args[0].includes(
+      "Better Auth]: No database configuration provided. Using memory adapter in development"
+    )
+  ) {
+    return;
+  }
+  originalConsoleWarn(...args);
+};
+
+const originalBetterAuthWarn = betterAuthLogger.warn.bind(betterAuthLogger);
+betterAuthLogger.warn = (...args: Parameters<typeof betterAuthLogger.warn>) => {
+  if (
+    args.length > 0 &&
+    typeof args[0] === "string" &&
+    args[0].includes(
+      "No database configuration provided. Using memory adapter in development"
+    )
+  ) {
+    return;
+  }
+  originalBetterAuthWarn(...args);
+};
 
 // Cognito configuration - following Better Auth documentation exactly
 const cognitoClientId = process.env.COGNITO_CLIENT_ID || '';
@@ -17,7 +46,8 @@ const secret = process.env.BETTER_AUTH_SECRET || process.env.NEXTAUTH_SECRET || 
 const trustedOrigins = [
   baseURL, // Always trust the configured base URL
   "http://localhost:3000", // Local development
-  "https://dev.syniad.net", // Production
+  "https://dev.syniad.net", // Dev environment
+  "https://syniad.net", // Production
 ];
 
 // Configure Better Auth with Cognito - following documentation exactly
@@ -67,6 +97,9 @@ export const auth = betterAuth({
       }
       return session;
     },
+  },
+  logger: {
+    level: 'error',
   },
 });
 

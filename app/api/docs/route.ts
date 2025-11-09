@@ -23,19 +23,28 @@ export async function GET(request: NextRequest) {
   <script src="https://unpkg.com/swagger-ui-dist@5.10.3/swagger-ui-standalone-preset.js"></script>
   <script>
     window.onload = async function() {
-      // Try to get the user's session token automatically
-      let sessionToken = null;
-      try {
-        const response = await fetch('/api/docs/session-token', {
-          credentials: 'include' // Include cookies for session
-        });
-        const data = await response.json();
-        if (data.authenticated && data.token) {
-          sessionToken = data.token;
-          console.log('[Swagger UI] Auto-authenticated with session token');
+      // Helper function to get session token
+      const getSessionToken = async () => {
+        try {
+          const response = await fetch('/api/docs/session-token', {
+            credentials: 'include' // Include cookies for session
+          });
+          const data = await response.json();
+          if (data.authenticated && data.token) {
+            return data.token;
+          }
+        } catch (error) {
+          console.warn('[Swagger UI] Could not fetch session token:', error);
         }
-      } catch (error) {
-        console.warn('[Swagger UI] Could not auto-authenticate:', error);
+        return null;
+      };
+      
+      // Try to get the user's session token automatically on page load
+      let sessionToken = await getSessionToken();
+      if (sessionToken) {
+        console.log('[Swagger UI] Auto-authenticated with session token');
+      } else {
+        console.warn('[Swagger UI] No session token available - user must log in');
       }
       
       const ui = SwaggerUIBundle({
@@ -61,34 +70,53 @@ export async function GET(request: NextRequest) {
               ui.preauthorizeApiKey('BearerAuth', sessionToken);
               console.log('[Swagger UI] Pre-authorized with session token');
             } catch (error) {
-              console.warn('[Swagger UI] Could not pre-authorize:', error);
-              // Fallback: manually set authorization
-              if (ui.getSystem().authActions) {
-                ui.getSystem().authActions.authorize({
-                  BearerAuth: {
-                    name: 'BearerAuth',
-                    schema: {
-                      type: 'http',
-                      scheme: 'bearer',
-                      bearerFormat: 'JWT'
-                    },
-                    value: sessionToken
-                  }
-                });
+              console.warn('[Swagger UI] Could not pre-authorize with preauthorizeApiKey:', error);
+              // Fallback: manually set authorization using authActions
+              try {
+                if (ui.getSystem && ui.getSystem().authActions) {
+                  ui.getSystem().authActions.authorize({
+                    BearerAuth: {
+                      name: 'BearerAuth',
+                      schema: {
+                        type: 'http',
+                        scheme: 'bearer',
+                        bearerFormat: 'JWT'
+                      },
+                      value: sessionToken
+                    }
+                  });
+                  console.log('[Swagger UI] Authorized using authActions');
+                }
+              } catch (fallbackError) {
+                console.warn('[Swagger UI] Could not authorize using authActions:', fallbackError);
               }
             }
+          } else {
+            console.warn('[Swagger UI] No session token available - user must log in');
           }
         },
-        requestInterceptor: (request) => {
-          // Ensure bearer token is sent with all requests
-          // Swagger UI automatically adds Authorization header when user authorizes,
-          // but we ensure it's properly formatted
-          if (request.headers && request.headers.Authorization) {
-            // Ensure it's in the correct format
-            if (!request.headers.Authorization.startsWith('Bearer ')) {
-              request.headers.Authorization = 'Bearer ' + request.headers.Authorization;
+        requestInterceptor: async (request) => {
+          // Always ensure bearer token is sent with all requests
+          // If Swagger UI hasn't added it, use the session token or fetch a fresh one
+          if (!request.headers.Authorization) {
+            // Use cached token if available, otherwise fetch fresh
+            const token = sessionToken || await getSessionToken();
+            if (token) {
+              request.headers.Authorization = 'Bearer ' + token;
+              // Update cached token if we fetched a fresh one
+              if (!sessionToken) {
+                sessionToken = token;
+              }
+            } else {
+              console.warn('[Swagger UI] No authentication token available for request');
             }
           }
+          
+          // Ensure Authorization header is properly formatted
+          if (request.headers.Authorization && !request.headers.Authorization.startsWith('Bearer ')) {
+            request.headers.Authorization = 'Bearer ' + request.headers.Authorization;
+          }
+          
           return request;
         },
         responseInterceptor: (response) => {

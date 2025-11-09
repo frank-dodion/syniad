@@ -65,7 +65,7 @@ output "frontend_bucket_name" {
 
 output "frontend_cloudfront_distribution_id" {
   description = "CloudFront distribution ID for frontend"
-  value       = aws_cloudfront_distribution.frontend.id
+  value       = aws_cloudfront_distribution.frontend_new.id
 }
 
 output "game_static_bucket_name" {
