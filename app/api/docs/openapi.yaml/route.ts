@@ -28,38 +28,19 @@ export async function GET(request: NextRequest) {
               type: 'http',
               scheme: 'bearer',
               bearerFormat: 'JWT',
-              description: 'Cognito ID token. Get your token by logging in at the main app, then run ./scripts/test-cognito-auth.sh to get your ID_TOKEN.',
+              description: 'Cognito ID token. All endpoints require authentication. The token is automatically retrieved from your session when you are logged in to the main app.',
             },
           },
         },
       },
       {
         operationMapper: (operation, appRoute) => {
-          // Endpoints that require authentication (return 401 if not authenticated)
-          // Check the route path or method to determine if auth is required
-          const requiresAuth = [
-            'createGame',
-            'joinGame',
-            'deleteGame',
-            'createScenario',
-            'updateScenario',
-            'deleteScenario',
-          ];
-          
-          // Get the route ID from the path
-          const routeId = Object.keys(contract).find(key => {
-            const route = contract[key as keyof typeof contract];
-            return route.path === appRoute.path && route.method === appRoute.method;
-          });
-          
-          if (routeId && requiresAuth.includes(routeId)) {
-            return {
-              ...operation,
-              security: [{ BearerAuth: [] }],
-            };
-          }
-          
-          return operation;
+          // ALL endpoints require authentication
+          // Mark every operation with BearerAuth security requirement
+          return {
+            ...operation,
+            security: [{ BearerAuth: [] }],
+          };
         },
       }
     );

@@ -46,7 +46,8 @@ const secret = process.env.BETTER_AUTH_SECRET || process.env.NEXTAUTH_SECRET || 
 const trustedOrigins = [
   baseURL, // Always trust the configured base URL
   "http://localhost:3000", // Local development
-  "https://dev.syniad.net", // Production
+  "https://dev.syniad.net", // Dev environment
+  "https://syniad.net", // Production
 ];
 
 // Configure Better Auth with Cognito - following documentation exactly
