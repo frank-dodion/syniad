@@ -3,18 +3,21 @@
 import { useEffect, useRef, useState } from "react";
 
 const TERRAIN_COLORS: Record<string, string> = {
-  clear: "#e8e8e8",
+  clear: "#d2b48c",
   mountain: "#8b7355",
-  forest: "#2d5016",
+  forest: "#5a8c5a",
   water: "#4a90e2",
   desert: "#f4a460",
-  swamp: "#556b2f",
+  swamp: "#5a9a9a",
+  town: "#808080",
 };
 
 interface Hex {
   row: number;
   column: number;
   terrain: string;
+  rivers?: number; // Bitmask for river sides
+  roads?: number; // Bitmask for road sides
 }
 
 interface HexGridProps {
@@ -105,6 +108,16 @@ export default function HexGrid({
       "g"
     );
     baseLayer.setAttribute("id", "hex-base-layer");
+    const riverLayer = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "g"
+    );
+    riverLayer.setAttribute("id", "hex-river-layer");
+    const roadLayer = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "g"
+    );
+    roadLayer.setAttribute("id", "hex-road-layer");
     const selectionLayer = document.createElementNS(
       "http://www.w3.org/2000/svg",
       "g"
@@ -133,7 +146,7 @@ export default function HexGrid({
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < columns; col++) {
         const key = `${row},${col}`;
-        const hex = hexMap.get(key) || { row, column: col, terrain: "clear" };
+        const hex = hexMap.get(key) || { row, column: col, terrain: "clear", rivers: 0, roads: 0 };
 
         const x = col * horizontalSpacing;
         const y = row * verticalSpacing + (col % 2 === 1 ? hexHeight / 2 : 0);
@@ -177,6 +190,112 @@ export default function HexGrid({
 
         baseLayer.appendChild(basePolygon);
         baseLayer.appendChild(label);
+
+        // Draw rivers if any
+        const rivers = hex.rivers ?? 0;
+        if (rivers > 0) {
+          // Parse points to get numeric coordinates
+          const pointCoords = points.map((p) => {
+            const [x, y] = p.split(",").map(Number);
+            return { x, y };
+          });
+
+          // Define river sides for flat-top hex (clockwise from top/North):
+          // Point 0: rightmost (east)
+          // Point 1: bottom right corner (southeast)
+          // Point 2: bottom left corner (southwest)
+          // Point 3: leftmost (west)
+          // Point 4: top left corner (northwest)
+          // Point 5: top right corner (northeast)
+          // Side 0 (top/North): point 5 to point 4
+          // Side 1 (top right/Northeast): point 0 to point 5
+          // Side 2 (bottom right/Southeast): point 1 to point 0
+          // Side 3 (bottom/South): point 2 to point 1
+          // Side 4 (bottom left/Southwest): point 3 to point 2
+          // Side 5 (top left/Northwest): point 4 to point 3
+          const sideConnections = [
+            [5, 4], // top/North (bit 0)
+            [0, 5], // top right/Northeast (bit 1)
+            [1, 0], // bottom right/Southeast (bit 2)
+            [2, 1], // bottom/South (bit 3)
+            [3, 2], // bottom left/Southwest (bit 4)
+            [4, 3], // top left/Northwest (bit 5)
+          ];
+
+          for (let bit = 0; bit < 6; bit++) {
+            if ((rivers & (1 << bit)) !== 0) {
+              const [startIdx, endIdx] = sideConnections[bit];
+              const start = pointCoords[startIdx];
+              const end = pointCoords[endIdx];
+
+              const riverLine = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "line"
+              );
+              riverLine.setAttribute("x1", start.x.toString());
+              riverLine.setAttribute("y1", start.y.toString());
+              riverLine.setAttribute("x2", end.x.toString());
+              riverLine.setAttribute("y2", end.y.toString());
+              riverLine.setAttribute("stroke", "#87CEEB"); // Light blue
+              riverLine.setAttribute("stroke-width", "6"); // Thick line
+              riverLine.setAttribute("stroke-linecap", "round");
+              riverLine.setAttribute("pointer-events", "none");
+              riverLayer.appendChild(riverLine);
+            }
+          }
+        }
+
+        // Draw roads if any
+        const roads = hex.roads ?? 0;
+        if (roads > 0) {
+          // Parse points to get numeric coordinates
+          const pointCoords = points.map((p) => {
+            const [x, y] = p.split(",").map(Number);
+            return { x, y };
+          });
+
+          // Define road sides (same as rivers) - roads go from center to midpoint of side
+          // Side 0 (top/North): midpoint of point 5 to point 4
+          // Side 1 (top right/Northeast): midpoint of point 0 to point 5
+          // Side 2 (bottom right/Southeast): midpoint of point 1 to point 0
+          // Side 3 (bottom/South): midpoint of point 2 to point 1
+          // Side 4 (bottom left/Southwest): midpoint of point 3 to point 2
+          // Side 5 (top left/Northwest): midpoint of point 4 to point 3
+          const sideConnections = [
+            [5, 4], // top/North (bit 0)
+            [0, 5], // top right/Northeast (bit 1)
+            [1, 0], // bottom right/Southeast (bit 2)
+            [2, 1], // bottom/South (bit 3)
+            [3, 2], // bottom left/Southwest (bit 4)
+            [4, 3], // top left/Northwest (bit 5)
+          ];
+
+          for (let bit = 0; bit < 6; bit++) {
+            if ((roads & (1 << bit)) !== 0) {
+              const [startIdx, endIdx] = sideConnections[bit];
+              const start = pointCoords[startIdx];
+              const end = pointCoords[endIdx];
+              
+              // Calculate midpoint of the side
+              const midX = (start.x + end.x) / 2;
+              const midY = (start.y + end.y) / 2;
+
+              const roadLine = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "line"
+              );
+              roadLine.setAttribute("x1", centerX.toString());
+              roadLine.setAttribute("y1", centerY.toString());
+              roadLine.setAttribute("x2", midX.toString());
+              roadLine.setAttribute("y2", midY.toString());
+              roadLine.setAttribute("stroke", "#8B0000"); // Dark red
+              roadLine.setAttribute("stroke-width", "6"); // Thick line
+              roadLine.setAttribute("stroke-linecap", "round");
+              roadLine.setAttribute("pointer-events", "none");
+              roadLayer.appendChild(roadLine);
+            }
+          }
+        }
 
         // Selection polygon - yellow solid outline (always visible when selected)
         const selectionPolygon = document.createElementNS(
@@ -316,6 +435,8 @@ export default function HexGrid({
 
     // Append layers in order (bottom to top)
     svg.appendChild(baseLayer);
+    svg.appendChild(riverLayer);
+    svg.appendChild(roadLayer);
     svg.appendChild(selectionLayer);
     svg.appendChild(hoverLayer);
     svg.appendChild(detectionLayer);

@@ -323,13 +323,14 @@ paths:
                   description: Number of turns in the scenario
                 hexes:
                   type: array
-                  description: "Optional array of hex terrain definitions. If omitted, a complete grid of clear terrain hexes will be generated for all rows and columns. Format: [{row: number, column: number, terrain: string}]"
+                  description: "Optional array of hex terrain definitions. If omitted, a complete grid of clear terrain hexes will be generated for all rows and columns. Format: [{row: number, column: number, terrain: string, rivers: number}]"
                   items:
                     type: object
                     required:
                       - row
                       - column
                       - terrain
+                      - rivers
                     properties:
                       row:
                         type: integer
@@ -348,7 +349,18 @@ paths:
                           - water
                           - desert
                           - swamp
+                          - town
                         description: Terrain type for this hex
+                      rivers:
+                        type: integer
+                        minimum: 0
+                        default: 0
+                        description: River bitmask (0=top/North, 1=top right, 2=bottom right, 3=bottom/South, 4=bottom left, 5=top left)
+                      roads:
+                        type: integer
+                        minimum: 0
+                        default: 0
+                        description: Road bitmask (0=top/North, 1=top right, 2=bottom right, 3=bottom/South, 4=bottom left, 5=top left)
                   example:
                     - row: 0
                       column: 0
@@ -610,13 +622,14 @@ paths:
                   type:
                     - array
                     - "null"
-                  description: "Array of hex terrain definitions, or null to clear. Format: [{row: number, column: number, terrain: string}]"
+                  description: "Array of hex terrain definitions, or null to clear. Format: [{row: number, column: number, terrain: string, rivers: number}]"
                   items:
                     type: object
                     required:
                       - row
                       - column
                       - terrain
+                      - rivers
                     properties:
                       row:
                         type: integer
@@ -635,7 +648,17 @@ paths:
                           - water
                           - desert
                           - swamp
-                        description: Terrain type for this hex
+                          - town
+                      rivers:
+                        type: integer
+                        minimum: 0
+                        default: 0
+                        description: River bitmask (0=top/North, 1=top right, 2=bottom right, 3=bottom/South, 4=bottom left, 5=top left)
+                      roads:
+                        type: integer
+                        minimum: 0
+                        default: 0
+                        description: Road bitmask (0=top/North, 1=top right, 2=bottom right, 3=bottom/South, 4=bottom left, 5=top left)
     delete:
       operationId: deleteScenario
       tags:

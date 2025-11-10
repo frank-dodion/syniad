@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "deploy:local": "bash scripts/deploy-local.sh",
     "deploy:dev": "bash scripts/deploy-all.sh dev",
     "deploy:prod": "bash scripts/deploy-all.sh prod",
     "cleanup:dev": "bash scripts/cleanup-orphaned-resources.sh dev",

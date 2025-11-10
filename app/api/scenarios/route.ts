@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       // Generate all hexes with default 'clear' terrain
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < columns; col++) {
-          defaultHexes.push({ row, column: col, terrain: 'clear' });
+          defaultHexes.push({ row, column: col, terrain: 'clear', rivers: 0, roads: 0 });
         }
       }
     } else {
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         for (let col = 0; col < columns; col++) {
           const key = `${row},${col}`;
           const providedHex = hexMap.get(key);
-          defaultHexes.push(providedHex || { row, column: col, terrain: 'clear' });
+          defaultHexes.push(providedHex || { row, column: col, terrain: 'clear', rivers: 0, roads: 0 });
         }
       }
     }

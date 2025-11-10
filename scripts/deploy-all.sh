@@ -23,7 +23,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║   Syniad Full Deployment Pipeline    ║${NC}"
+echo -e "${BLUE}║    Syniad Full Deployment Pipeline     ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${GREEN}Stage: ${STAGE}${NC}"
@@ -90,7 +90,7 @@ echo ""
 
 # Step 5: Summary
 echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║        Deployment Complete!            ║${NC}"
+echo -e "${BLUE}║         Deployment Complete!           ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
 echo ""
 

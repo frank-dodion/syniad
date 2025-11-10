@@ -66,8 +66,8 @@ data "aws_ecr_image" "game_latest" {
 resource "aws_lambda_function" "game" {
   function_name = "${local.service_name}-game"
   role          = aws_iam_role.lambda_role.arn
-  timeout       = 60  # Increased to handle cold starts and Next.js initialization
-  memory_size   = 1024  # Increased memory for faster initialization
+  timeout       = 60   # Increased to handle cold starts and Next.js initialization
+  memory_size   = 1024 # Increased memory for faster initialization
   package_type  = "Image"
 
   # Use the latest image digest so Lambda is updated on every deploy
@@ -78,14 +78,18 @@ resource "aws_lambda_function" "game" {
 
   environment {
     variables = {
-      PORT                     = "8080"
-      HOSTNAME                 = "0.0.0.0"
+      PORT     = "8080"
+      HOSTNAME = "0.0.0.0"
       # Lambda Web Adapter configuration - disable readiness check
-      AWS_LWA_PORT                      = "8080"
-      AWS_LWA_ENABLE_READINESS_CHECK    = "false"
+      AWS_LWA_PORT                   = "8080"
+      AWS_LWA_ENABLE_READINESS_CHECK = "false"
       # Next.js environment variables
+      # Note: NEXT_PUBLIC_* vars are only needed if embedded at build time
+      # Since client-side code now uses window.location.origin, we don't need NEXT_PUBLIC_FRONTEND_URL
+      # But keeping it for backward compatibility and any other code that might use it
       NEXT_PUBLIC_API_URL      = "https://${local.frontend_domain_name}" # API routes are now in the game app
-      NEXT_PUBLIC_FRONTEND_URL = "https://${local.frontend_domain_name}"
+      NEXT_PUBLIC_FRONTEND_URL = "https://${local.frontend_domain_name}" # Kept for compatibility, but client-side uses window.location.origin
+      FRONTEND_URL             = "https://${local.frontend_domain_name}" # Runtime variable for server-side code
       # NEXT_PUBLIC_ASSET_PREFIX is a build-time variable, already embedded in Docker image
       # No need to set it as runtime environment variable (would create circular dependency)
       NEXTAUTH_URL          = "https://${local.frontend_domain_name}"
@@ -121,7 +125,7 @@ resource "aws_lambda_function_url" "game" {
     allow_origins     = ["*"]
     allow_methods     = ["*"]
     allow_headers     = ["*"]
-    expose_headers   = ["*"]
+    expose_headers    = ["*"]
     max_age           = 300
   }
 }

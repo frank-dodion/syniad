@@ -30,14 +30,30 @@ betterAuthLogger.warn = (...args: Parameters<typeof betterAuthLogger.warn>) => {
 };
 
 // Cognito configuration - following Better Auth documentation exactly
+// These are read at runtime, not build time, so they may be empty during build
 const cognitoClientId = process.env.COGNITO_CLIENT_ID || '';
 const cognitoClientSecret = process.env.COGNITO_CLIENT_SECRET || '';
 const cognitoDomain = process.env.COGNITO_DOMAIN || ''; // Full domain: e.g., "your-app.auth.us-east-1.amazoncognito.com"
 const cognitoRegion = process.env.COGNITO_REGION || 'us-east-1';
 const cognitoUserPoolId = process.env.COGNITO_USER_POOL_ID || '';
 
-// Base URL for Better Auth
-const baseURL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
+// Base URL for Better Auth - use runtime environment variable
+// Can be set at Lambda runtime, no need for build-time embedding
+const baseURL = process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
+
+// Helper to validate Cognito config only at runtime (not during build)
+function validateCognitoConfig() {
+  if (!cognitoClientId || !cognitoDomain || !cognitoUserPoolId) {
+    // Only throw if we're actually trying to use auth (runtime), not during build
+    // During build, Next.js may evaluate modules without env vars
+    if (process.env.NODE_ENV !== 'production' || typeof window !== 'undefined') {
+      // In development or client-side, we can be more lenient
+      return;
+    }
+    // In production server runtime, we need these
+    throw new Error('Cognito configuration missing. Set COGNITO_CLIENT_ID, COGNITO_DOMAIN, and COGNITO_USER_POOL_ID environment variables.');
+  }
+}
 
 // Better Auth requires a secret (for JWT signing)
 const secret = process.env.BETTER_AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'change-this-secret-in-production-min-32-chars';
@@ -51,6 +67,9 @@ const trustedOrigins = [
 ];
 
 // Configure Better Auth with Cognito - following documentation exactly
+// Only validate config at runtime, not during build
+// During build, env vars may not be available, so we allow empty values
+// Better Auth will validate when actually used (at runtime)
 export const auth = betterAuth({
   baseURL: baseURL,
   basePath: "/api/auth",
@@ -60,7 +79,7 @@ export const auth = betterAuth({
     enabled: false, // Using Cognito OAuth only
   },
   socialProviders: {
-    cognito: {
+    cognito: cognitoClientId && cognitoDomain && cognitoUserPoolId ? {
       clientId: cognitoClientId,
       // Better Auth may require clientSecret field even for public clients
       // Pass empty string for public clients (no secret generated)
@@ -68,12 +87,17 @@ export const auth = betterAuth({
       domain: cognitoDomain, // Full domain format: "your-app.auth.us-east-1.amazoncognito.com"
       region: cognitoRegion, // e.g., "us-east-1"
       userPoolId: cognitoUserPoolId,
-    },
+    } : undefined, // Only configure if all required values are present
   },
   session: {
     expiresIn: 60 * 60 * 24, // 24 hours
     updateAge: 60 * 60, // 1 hour
     // JWT sessions are used by default when no database is configured
+  },
+  // Advanced configuration
+  advanced: {
+    cookiePrefix: "better-auth",
+    // generateId: undefined, // Use default ID generation
   },
   callbacks: {
     async jwt({ token, account }: { token: any; account?: any }) {
@@ -99,7 +123,7 @@ export const auth = betterAuth({
     },
   },
   logger: {
-    level: 'error',
+    level: process.env.NODE_ENV === 'production' ? 'error' : 'debug',
   },
 });
 
