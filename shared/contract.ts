@@ -5,12 +5,14 @@ import { Game, Scenario, Hex, Player } from './types';
 const c = initContract();
 
 // Zod schemas for validation
-const TerrainTypeSchema = z.enum(['clear', 'mountain', 'forest', 'water', 'desert', 'swamp']);
+const TerrainTypeSchema = z.enum(['clear', 'mountain', 'forest', 'water', 'desert', 'swamp', 'town']);
 
 const HexSchema: z.ZodType<Hex> = z.object({
   row: z.number().int().min(0),
   column: z.number().int().min(0),
   terrain: TerrainTypeSchema,
+  rivers: z.number().int().min(0), // Bitmask for river sides (required, default to 0 in application code)
+  roads: z.number().int().min(0), // Bitmask for road sides (required, default to 0 in application code)
 });
 
 const PlayerSchema: z.ZodType<Player> = z.object({

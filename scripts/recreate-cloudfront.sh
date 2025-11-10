@@ -112,7 +112,7 @@ echo ""
 
 # Summary
 echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║        Recreate Complete!               ║${NC}"
+echo -e "${BLUE}║         Recreate Complete!            ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
 echo ""
 

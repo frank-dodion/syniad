@@ -105,7 +105,7 @@ done
 echo ""
 
 echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║        Cleanup Complete!               ║${NC}"
+echo -e "${BLUE}║          Cleanup Complete!           ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${GREEN}You can now run Terraform destroy/apply${NC}"

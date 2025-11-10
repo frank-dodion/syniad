@@ -1,9 +1,11 @@
-export type TerrainType = 'clear' | 'mountain' | 'forest' | 'water' | 'desert' | 'swamp';
+export type TerrainType = 'clear' | 'mountain' | 'forest' | 'water' | 'desert' | 'swamp' | 'town';
 
 export interface Hex {
   row: number;
   column: number;
   terrain: TerrainType;
+  rivers: number; // Bitmask: 0=top (North), 1=top right, 2=bottom right, 3=bottom (South), 4=bottom left, 5=top left
+  roads: number; // Bitmask: 0=top (North), 1=top right, 2=bottom right, 3=bottom (South), 4=bottom left, 5=top left
 }
 
 export interface Scenario {

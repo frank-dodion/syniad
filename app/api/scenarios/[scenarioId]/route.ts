@@ -84,6 +84,13 @@ export async function PUT(
 
     const { title, description, columns, rows, turns, hexes } = bodyValidation.data;
     
+    // Ensure existing hexes have rivers property (migration for backward compatibility)
+    const existingHexes = existing.hexes ? existing.hexes.map(hex => ({
+      ...hex,
+      rivers: hex.rivers ?? 0,
+      roads: hex.roads ?? 0
+    })) : undefined;
+    
     const updatedScenario: Scenario = {
       ...existing,
       title: title !== undefined ? title : existing.title,
@@ -91,7 +98,7 @@ export async function PUT(
       columns: columns !== undefined ? columns : existing.columns,
       rows: rows !== undefined ? rows : existing.rows,
       turns: turns !== undefined ? turns : existing.turns,
-      hexes: hexes !== undefined ? hexes : existing.hexes,
+      hexes: hexes !== undefined ? hexes : existingHexes,
       updatedAt: new Date().toISOString()
     };
     
@@ -110,7 +117,7 @@ export async function PUT(
         for (let col = 0; col < updatedScenario.columns; col++) {
           const key = `${row},${col}`;
           const providedHex = hexMap.get(key);
-          allHexes.push(providedHex || { row, column: col, terrain: 'clear' });
+          allHexes.push(providedHex || { row, column: col, terrain: 'clear', rivers: 0, roads: 0 });
         }
       }
       updatedScenario.hexes = allHexes;

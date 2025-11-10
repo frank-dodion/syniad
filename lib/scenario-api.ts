@@ -5,7 +5,16 @@
 
 import { createAuthClient } from "better-auth/react";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+// Use window.location.origin at runtime - always correct, no build-time config needed
+const getAPIBaseURL = () => {
+  if (typeof window === 'undefined') {
+    return process.env.NEXT_PUBLIC_API_URL || '';
+  }
+  // Use window.location.origin - API is on the same domain
+  return window.location.origin;
+};
+
+const API_BASE_URL = getAPIBaseURL();
 
 // Better Auth client for getting session tokens
 const authClient = typeof window !== 'undefined' 
@@ -26,6 +35,8 @@ export interface Scenario {
     row: number;
     column: number;
     terrain: string;
+    rivers: number;
+    roads: number;
   }>;
   createdAt?: string;
 }

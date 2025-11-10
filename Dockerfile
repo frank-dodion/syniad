@@ -35,12 +35,10 @@ COPY tailwind.config.js ./
 COPY postcss.config.js ./
 RUN mkdir -p public
 
-# Accept build args for Next.js public environment variables
-# These are embedded at build time, not runtime
-ARG NEXT_PUBLIC_FRONTEND_URL
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_FRONTEND_URL=${NEXT_PUBLIC_FRONTEND_URL}
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+# No build-time environment variables needed
+# Client-side code uses window.location.origin (runtime)
+# Server-side code reads from Lambda runtime environment variables
+# This ensures the Docker image is identical across all environments
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry

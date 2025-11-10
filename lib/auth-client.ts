@@ -3,15 +3,14 @@
 import { createAuthClient } from "better-auth/react";
 import { useState, useEffect } from "react";
 
-// Use the same baseURL logic as the server-side auth configuration
-// This ensures the OAuth redirect_uri matches what's configured in Cognito
+// Use window.location.origin for client-side - always correct at runtime
+// No need for build-time environment variables - the browser knows its own origin
 const getBaseURL = () => {
   if (typeof window === 'undefined') {
     return 'http://localhost:3000';
   }
-  // In production, use the environment variable if available, otherwise use window.location.origin
-  // This ensures consistency with the server-side configuration
-  return process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin;
+  // Always use window.location.origin - it's always correct and doesn't require build-time config
+  return window.location.origin;
 };
 
 const authClient = createAuthClient({
@@ -147,19 +146,17 @@ export async function login(redirectUri?: string) {
     }
   }
   
-  // Better Auth should construct the OAuth redirect_uri as ${baseURL}/api/auth/callback/cognito
-  // However, to ensure it matches Cognito configuration exactly, we pass the full callback URL
-  // The callbackURL must match exactly what's configured in Cognito User Pool Client
+  // Better Auth automatically constructs the OAuth redirect_uri as ${baseURL}/api/auth/callback/cognito
+  // The callbackURL parameter is where the user should be redirected AFTER authentication completes
+  // Pass the origin (home page) - Better Auth will handle the OAuth callback internally
   const baseURL = getBaseURL();
-  const oauthCallbackURL = `${baseURL}/api/auth/callback/cognito`;
   
-  // Pass the exact OAuth callback URL that matches Cognito configuration
-  // This ensures the redirect_uri parameter in the OAuth request matches Cognito
-  // After authentication, Better Auth will redirect to the origin, and our useEffect
-  // will handle redirecting to the stored path from sessionStorage
+  // Pass the origin as callbackURL - this is where Better Auth redirects after successful auth
+  // Better Auth handles the OAuth callback internally and then redirects to this URL
+  // Our useEffect will handle redirecting to the stored path from sessionStorage
   await authClient.signIn.social({
     provider: "cognito",
-    callbackURL: oauthCallbackURL,
+    callbackURL: baseURL,
   });
 }
 
