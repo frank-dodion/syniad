@@ -38,6 +38,16 @@ export interface Scenario {
     rivers: number;
     roads: number;
   }>;
+  units?: Array<{
+    id: string;
+    player: 1 | 2;
+    combatStrength: number;
+    movementAllowance: number;
+    arm: 'Infantry' | 'Cavalry' | 'Artillery';
+    row: number;
+    column: number;
+    status?: 'selected' | 'available' | 'moved' | 'unavailable';
+  }>;
   createdAt?: string;
 }
 
@@ -167,11 +177,15 @@ async function apiRequest(
 export async function getAllScenarios(
   limit: number = 100,
   nextToken?: string | null,
-  accessToken?: string | null
+  accessToken?: string | null,
+  creatorId?: string | null
 ): Promise<ScenariosResponse> {
   let path = `/api/scenarios?limit=${limit}`;
   if (nextToken) {
     path += `&nextToken=${encodeURIComponent(nextToken)}`;
+  }
+  if (creatorId) {
+    path += `&creatorId=${encodeURIComponent(creatorId)}`;
   }
   return await apiRequest('GET', path, undefined, accessToken);
 }

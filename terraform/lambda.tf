@@ -46,7 +46,10 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
           "${aws_dynamodb_table.player_games.arn}/index/*",
           aws_dynamodb_table.scenarios.arn,
           "${aws_dynamodb_table.scenarios.arn}/*",
-          "${aws_dynamodb_table.scenarios.arn}/index/*"
+          "${aws_dynamodb_table.scenarios.arn}/index/*",
+          aws_dynamodb_table.websocket_connections.arn,
+          "${aws_dynamodb_table.websocket_connections.arn}/*",
+          "${aws_dynamodb_table.websocket_connections.arn}/index/*"
         ]
       },
       {
@@ -57,6 +60,13 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
           "logs:PutLogEvents"
         ]
         Resource = "arn:aws:logs:*:*:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "execute-api:ManageConnections"
+        ]
+        Resource = "arn:aws:execute-api:${var.aws_region}:*:*/*"
       }
     ]
   })

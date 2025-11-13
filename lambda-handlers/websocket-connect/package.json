@@ -1,0 +1,11 @@
+{
+  "name": "websocket-connect",
+  "version": "1.0.0",
+  "description": "WebSocket connect handler for Syniad game",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.922.0",
+    "@aws-sdk/lib-dynamodb": "^3.922.0"
+  }
+}
+

@@ -103,6 +103,11 @@ resource "aws_lambda_function" "game" {
       GAMES_TABLE        = aws_dynamodb_table.games.name
       PLAYER_GAMES_TABLE = aws_dynamodb_table.player_games.name
       SCENARIOS_TABLE    = aws_dynamodb_table.scenarios.name
+      # WebSocket API endpoint (full URL with stage) - runtime variable, not build-time
+      WEBSOCKET_URL = "wss://${aws_apigatewayv2_api.websocket.api_endpoint}/${var.stage}"
+      # WebSocket broadcast configuration (for API routes to broadcast messages)
+      CONNECTIONS_TABLE  = aws_dynamodb_table.websocket_connections.name
+      WEBSOCKET_ENDPOINT = "https://${replace(aws_apigatewayv2_api.websocket.api_endpoint, "wss://", "")}/${var.stage}"
       # AWS_REGION is automatically provided by Lambda - don't set it manually
     }
   }

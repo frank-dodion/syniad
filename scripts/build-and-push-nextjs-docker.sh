@@ -41,6 +41,12 @@ echo ""
 echo "Pre-pulling Lambda adapter image to avoid rate limits..."
 docker pull public.ecr.aws/awsguru/aws-lambda-adapter:0.6.0 || echo "Warning: Failed to pre-pull Lambda adapter, will try during build"
 
+# Ensure buildx is available and create a builder if needed (for CI/CD compatibility)
+if ! docker buildx ls | grep -q "default"; then
+  echo "Creating buildx builder instance..."
+  docker buildx create --name default --use 2>/dev/null || docker buildx use default 2>/dev/null || true
+fi
+
 # Login to ECR
 echo ""
 echo "Logging in to ECR..."

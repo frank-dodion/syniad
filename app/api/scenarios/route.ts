@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { extractUserIdentity } from '@/lib/api-auth';
 import { getAllScenarios, saveScenario } from '@/lib/api-db';
 import { v4 as uuidv4 } from 'uuid';
-import { Scenario, Hex } from '@/shared/types';
+import { Scenario, Hex, TerrainType } from '@/shared/types';
 import { contract } from '@/shared/contract';
 import {
   validateRequestBody,
@@ -36,12 +36,14 @@ export async function GET(request: NextRequest) {
     const query = validation.data || {};
     const limit = query.limit;
     const nextToken = query.nextToken;
+    const creatorId = query.creatorId;
     
     if (limit && (limit < 1 || limit > 100)) {
       return createErrorResponse(400, 'limit must be between 1 and 100', user);
     }
     
-    const result = await getAllScenarios(limit, nextToken);
+    // If creatorId is provided, filter by creator. Otherwise get all scenarios.
+    const result = await getAllScenarios(limit, nextToken, creatorId);
     
     const response = {
       scenarios: result.items,
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(400, validation.error, user);
     }
 
-    const { title, description, columns, rows, turns, hexes } = validation.data;
+    const { title, description, columns, rows, turns, hexes, units } = validation.data;
     
     const scenarioId = uuidv4();
     
@@ -87,7 +89,7 @@ export async function POST(request: NextRequest) {
       // Generate all hexes with default 'clear' terrain
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < columns; col++) {
-          defaultHexes.push({ row, column: col, terrain: 'clear', rivers: 0, roads: 0 });
+          defaultHexes.push({ column: col, row, terrain: TerrainType.Clear, rivers: 0, roads: 0 });
         }
       }
     } else {
@@ -104,10 +106,12 @@ export async function POST(request: NextRequest) {
         for (let col = 0; col < columns; col++) {
           const key = `${row},${col}`;
           const providedHex = hexMap.get(key);
-          defaultHexes.push(providedHex || { row, column: col, terrain: 'clear', rivers: 0, roads: 0 });
+          defaultHexes.push(providedHex || { column: col, row, terrain: TerrainType.Clear, rivers: 0, roads: 0 });
         }
       }
     }
+    
+    const playerName = user.email || `User-${user.userId.substring(0, 8)}`;
     
     const scenario: Scenario = {
       scenarioId,
@@ -117,6 +121,12 @@ export async function POST(request: NextRequest) {
       rows,
       turns,
       hexes: defaultHexes,
+      units: units || [],
+      creatorId: user.userId, // Store creator ID
+      creator: {
+        name: playerName,
+        userId: user.userId
+      }, // Store creator info for display
       createdAt: new Date().toISOString(),
       queryKey: 'ALL_SCENARIOS'
     };

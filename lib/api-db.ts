@@ -1,7 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, QueryCommand, DeleteCommand, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, GetCommand, QueryCommand, DeleteCommand, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
 import { Buffer } from 'buffer';
-import { Game, Scenario } from '@/shared/types';
+import { Game, Scenario, PlayerNumber, GamePhase, GameAction, UnitStatus } from '@/shared/types';
 
 const GAMES_TABLE = process.env.GAMES_TABLE || process.env.NEXT_PUBLIC_GAMES_TABLE || '';
 const PLAYER_GAMES_TABLE = process.env.PLAYER_GAMES_TABLE || process.env.NEXT_PUBLIC_PLAYER_GAMES_TABLE || '';
@@ -29,7 +29,11 @@ function getDynamoDBClient(): DynamoDBDocumentClient {
     const client = new DynamoDBClient({
       region: process.env.AWS_REGION || process.env.NEXT_PUBLIC_AWS_REGION || 'us-east-1'
     });
-    dynamodbClient = DynamoDBDocumentClient.from(client);
+    dynamodbClient = DynamoDBDocumentClient.from(client, {
+      marshallOptions: {
+        removeUndefinedValues: true, // Remove undefined values before sending to DynamoDB
+      },
+    });
   }
   
   return dynamodbClient;
@@ -41,6 +45,16 @@ export interface PaginatedResult<T> {
   hasMore: boolean;
 }
 
+/**
+ * Save game to database
+ * 
+ * Note: This saves the entire game record. Fields are organized as:
+ * - Fixed/Static: gameId, title, scenarioId, scenarioSnapshot, player1, player2, player1Id, player2Id, createdAt
+ * - Dynamic: gameState (contains turnNumber and future gameplay state), updatedAt
+ * 
+ * During gameplay, only dynamic fields should change. Fixed fields are set at creation
+ * and only change via admin operations (e.g., title rename, game reset).
+ */
 export async function saveGame(game: Game): Promise<void> {
   const playerIds: string[] = [game.player1.userId];
   if (game.player2) {
@@ -122,7 +136,46 @@ export async function getGame(gameId: string): Promise<Game | null> {
       Key: { gameId }
     }));
     
-    return result.Item as Game | null;
+    if (!result.Item) {
+      return null;
+    }
+    
+    const game = result.Item as Game;
+    
+    let needsSave = false;
+    
+    // Migration: Ensure activePlayer, phase, and action are set (for backward compatibility with old games)
+    if (!game.gameState?.activePlayer || !game.gameState?.phase || !game.gameState?.action) {
+      game.gameState = {
+        ...game.gameState,
+        turnNumber: game.gameState?.turnNumber ?? 1,
+        activePlayer: game.gameState?.activePlayer ?? PlayerNumber.Player1,
+        phase: game.gameState?.phase ?? GamePhase.Movement,
+        action: game.gameState?.action ?? GameAction.SelectUnit
+      };
+      needsSave = true;
+    }
+
+    // Migration: Ensure units array exists in game state
+    if (!game.gameState?.units || !Array.isArray(game.gameState.units) || game.gameState.units.length === 0) {
+      const scenarioUnits = game.scenarioSnapshot?.units || [];
+      const activePlayer = game.gameState?.activePlayer ?? PlayerNumber.Player1;
+      game.gameState = {
+        ...game.gameState,
+        units: scenarioUnits.map(unit => ({
+          ...unit,
+          status: (unit.status || (unit.player === activePlayer ? 'available' : 'unavailable')) as UnitStatus,
+        })),
+      };
+      needsSave = true;
+    }
+
+    if (needsSave) {
+      // Save the migrated game back to the database
+      await saveGame(game);
+    }
+    
+    return game;
   } catch (error: any) {
     // No fallback - fail explicitly if credentials are missing
     if (error?.name === 'CredentialsProviderError' || error?.message?.includes('credentials')) {
@@ -186,8 +239,10 @@ export async function getAllGames(
         ExclusiveStartKey: nextToken ? JSON.parse(Buffer.from(nextToken, 'base64').toString()) : undefined
       }));
       
+      const items = (result.Items || []) as Game[];
+      
       return {
-        items: (result.Items || []) as Game[],
+        items,
         nextToken: result.LastEvaluatedKey ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64') : undefined,
         hasMore: !!result.LastEvaluatedKey
       };
@@ -242,24 +297,16 @@ export async function getAllGames(
       }
     }));
     
+    const items = (batchResult.Responses?.[GAMES_TABLE] || []) as Game[];
+    
     return {
-      items: (batchResult.Responses?.[GAMES_TABLE] || []) as Game[],
+      items,
       nextToken: result.LastEvaluatedKey ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64') : undefined,
       hasMore: !!result.LastEvaluatedKey
     };
   } else {
-    // Get all games (scan)
-    const result = await getDynamoDBClient().send(new ScanCommand({
-      TableName: GAMES_TABLE,
-      Limit: queryLimit,
-      ExclusiveStartKey: nextToken ? JSON.parse(Buffer.from(nextToken, 'base64').toString()) : undefined
-    }));
-    
-    return {
-      items: (result.Items || []) as Game[],
-      nextToken: result.LastEvaluatedKey ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64') : undefined,
-      hasMore: !!result.LastEvaluatedKey
-    };
+    // No filter provided - require at least one filter to avoid expensive scans
+    throw new Error('At least one filter parameter (playerId, player1Id, or player2Id) must be provided. Scans are not allowed for performance and cost reasons.');
   }
   } catch (error: any) {
     // No fallback - fail explicitly if credentials are missing
@@ -307,19 +354,29 @@ export async function getScenario(scenarioId: string): Promise<Scenario | null> 
   return scenario;
 }
 
-export async function getAllScenarios(limit?: number, nextToken?: string): Promise<PaginatedResult<Scenario>> {
+export async function getAllScenarios(limit?: number, nextToken?: string, creatorId?: string): Promise<PaginatedResult<Scenario>> {
   const queryLimit = limit ? Math.min(limit, 100) : 100;
   
   const queryParams: any = {
     TableName: SCENARIOS_TABLE,
-    IndexName: 'queryKey-createdAt-index',
-    KeyConditionExpression: 'queryKey = :queryKey',
-    ExpressionAttributeValues: {
-      ':queryKey': 'ALL_SCENARIOS'
-    },
     Limit: queryLimit,
     ScanIndexForward: false // Most recent first
   };
+  
+  // If creatorId is provided, query by creator. Otherwise query all scenarios.
+  if (creatorId) {
+    queryParams.IndexName = 'creatorId-createdAt-index';
+    queryParams.KeyConditionExpression = 'creatorId = :creatorId';
+    queryParams.ExpressionAttributeValues = {
+      ':creatorId': creatorId
+    };
+  } else {
+    queryParams.IndexName = 'queryKey-createdAt-index';
+    queryParams.KeyConditionExpression = 'queryKey = :queryKey';
+    queryParams.ExpressionAttributeValues = {
+      ':queryKey': 'ALL_SCENARIOS'
+    };
+  }
   
   if (nextToken) {
     try {
@@ -332,18 +389,7 @@ export async function getAllScenarios(limit?: number, nextToken?: string): Promi
   try {
     const result = await getDynamoDBClient().send(new QueryCommand(queryParams));
 
-    // Migration: Ensure all hexes have rivers and roads properties (default to 0 for backward compatibility)
-    const items = (result.Items || []).map((item: any) => {
-      const scenario = item as Scenario;
-      if (scenario.hexes && Array.isArray(scenario.hexes)) {
-        scenario.hexes = scenario.hexes.map(hex => ({
-          ...hex,
-          rivers: hex.rivers ?? 0,
-          roads: hex.roads ?? 0
-        }));
-      }
-      return scenario;
-    });
+    const items = (result.Items || []) as Scenario[];
 
     return {
       items,

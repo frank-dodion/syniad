@@ -1,10 +1,32 @@
 import { NextRequest } from 'next/server';
 import { generateOpenApi } from '@ts-rest/open-api';
 import { contract } from '@/shared/contract';
+import { extractUserIdentity } from '@/lib/api-auth';
 
-// GET /api/docs/openapi.yaml - Generate and serve OpenAPI specification from contract
+// GET /api/docs/openapi.yaml - Generate and serve OpenAPI specification from contract (requires authentication)
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication
+    const user = await extractUserIdentity(request);
+    
+    if (!user || !user.userId) {
+      // Redirect to login - preserve the OpenAPI spec URL for redirect after login
+      const currentUrl = new URL(request.url);
+      const redirectUrl = currentUrl.toString();
+      
+      // Construct Better Auth signin URL with callback
+      const baseURL = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3000';
+      const signinUrl = `${baseURL}/api/auth/signin/cognito?callbackURL=${encodeURIComponent(redirectUrl)}`;
+      
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': signinUrl,
+        },
+      });
+    }
+    
+    // User is authenticated - generate and serve OpenAPI spec
     // Generate OpenAPI spec from ts-rest contract
     const openApiDocument = generateOpenApi(
       contract,

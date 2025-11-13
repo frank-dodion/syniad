@@ -52,3 +52,15 @@ variable "cognito_logout_urls" {
   default     = ["http://localhost:3000"]
 }
 
+variable "cognito_allowed_domains" {
+  description = "List of allowed email domains for signup (e.g., ['@dodion.co.uk'])"
+  type        = list(string)
+  default     = ["@dodion.co.uk"]
+}
+
+variable "cognito_allowed_emails" {
+  description = "List of specific allowed email addresses for signup (e.g., ['user@example.com'])"
+  type        = list(string)
+  default     = []
+}
+

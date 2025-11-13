@@ -53,6 +53,11 @@ services:
       GAMES_TABLE: ${GAMES_TABLE}
       PLAYER_GAMES_TABLE: ${PLAYER_GAMES_TABLE}
       SCENARIOS_TABLE: ${SCENARIOS_TABLE}
+      # WebSocket Configuration (from .env - set by deploy-local.sh)
+      WEBSOCKET_URL: ${WEBSOCKET_URL:-}
+      # WebSocket broadcast configuration (for API routes to broadcast messages)
+      CONNECTIONS_TABLE: ${CONNECTIONS_TABLE:-}
+      WEBSOCKET_ENDPOINT: ${WEBSOCKET_ENDPOINT:-}
     volumes:
       # Mount AWS credentials from host so container can access DynamoDB
       # Container runs as nextjs user (UID 1001), so mount to their home directory

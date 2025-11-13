@@ -17,6 +17,7 @@
     "test-lambda-url:dev": "bash scripts/test-lambda-function-url.sh dev"
   },
   "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.922.0",
     "@aws-sdk/client-dynamodb": "^3.922.0",
     "@aws-sdk/lib-dynamodb": "^3.922.0",
     "@ts-rest/core": "^3.52.1",

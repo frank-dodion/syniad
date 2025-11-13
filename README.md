@@ -151,6 +151,16 @@ cd terraform && terraform apply
 cd terraform && terraform destroy
 ```
 
+## Documentation
+
+Additional documentation is available in the `docs/` directory:
+
+- **[Authentication State](docs/AUTH-STATE.md)** - Current authentication implementation, known issues, and troubleshooting
+- **[Cognito Allowlist](docs/COGNITO-ALLOWLIST.md)** - Managing email domain and email allowlist with Terraform
+- **[API Documentation](docs/API-DOCS-DEPLOYMENT.md)** - API documentation deployment guide
+- **[WebSocket Architecture](docs/WEBSOCKET-ARCHITECTURE.md)** - Real-time communication architecture
+- See `docs/README.md` for a complete list of documentation files
+
 ## Next Steps
 
 1. Add WebSocket support for real-time game updates

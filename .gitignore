@@ -44,5 +44,9 @@ tfplan
 # Build artifacts
 .build/
 
+# Lambda handlers
+lambda-handlers/**/*.zip
+lambda-handlers/**/node_modules/
+
 # Docker
 .dockerignore

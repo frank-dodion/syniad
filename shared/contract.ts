@@ -1,36 +1,38 @@
 import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
-import { Game, Scenario, Hex, Player } from './types';
+import { Game, Scenario, Hex, Player, ScenarioUnit, PlayerNumber, TerrainType, GamePhase, GameAction } from './types';
 
 const c = initContract();
 
 // Zod schemas for validation
-const TerrainTypeSchema = z.enum(['clear', 'mountain', 'forest', 'water', 'desert', 'swamp', 'town']);
+const TerrainTypeSchema = z.nativeEnum(TerrainType);
+const GamePhaseSchema = z.nativeEnum(GamePhase);
+const GameActionSchema = z.nativeEnum(GameAction);
 
 const HexSchema: z.ZodType<Hex> = z.object({
-  row: z.number().int().min(0),
   column: z.number().int().min(0),
+  row: z.number().int().min(0),
   terrain: TerrainTypeSchema,
   rivers: z.number().int().min(0), // Bitmask for river sides (required, default to 0 in application code)
   roads: z.number().int().min(0), // Bitmask for road sides (required, default to 0 in application code)
 });
 
+const ScenarioUnitSchema: z.ZodType<ScenarioUnit> = z.object({
+  id: z.string().uuid(),
+  player: z.nativeEnum(PlayerNumber),
+  combatStrength: z.number().int().min(0).max(9),
+  movementAllowance: z.number().int().min(0).max(9),
+  arm: z.enum(['Infantry', 'Cavalry', 'Artillery']),
+  column: z.number().int().min(0),
+  row: z.number().int().min(0),
+  status: z.enum(['selected', 'available', 'moved', 'unavailable']).optional(),
+  startingColumn: z.number().int().min(0).optional(),
+  startingRow: z.number().int().min(0).optional(),
+});
+
 const PlayerSchema: z.ZodType<Player> = z.object({
   name: z.string(),
   userId: z.string(),
-});
-
-const GameSchema: z.ZodType<Game> = z.object({
-  gameId: z.string(),
-  status: z.enum(['waiting', 'active', 'finished']),
-  scenarioId: z.string(),
-  player1: PlayerSchema,
-  player2: PlayerSchema.optional(),
-  player1Id: z.string(),
-  player2Id: z.string().optional(),
-  turnNumber: z.number().int().min(1),
-  createdAt: z.string(),
-  updatedAt: z.string().optional(),
 });
 
 const ScenarioSchema: z.ZodType<Scenario> = z.object({
@@ -41,9 +43,40 @@ const ScenarioSchema: z.ZodType<Scenario> = z.object({
   rows: z.number().int().min(1),
   turns: z.number().int().min(1),
   hexes: z.array(HexSchema).optional(),
+  units: z.array(ScenarioUnitSchema).optional(),
+  creatorId: z.string(), // Required: User ID of the scenario creator
+  creator: PlayerSchema.optional(), // Optional: Creator info for display
   createdAt: z.string(),
   updatedAt: z.string().optional(),
   queryKey: z.string().optional(),
+});
+
+const GameStateSchema = z.object({
+  turnNumber: z.number().int().min(1),
+  activePlayer: z.nativeEnum(PlayerNumber),
+  phase: GamePhaseSchema,
+  action: GameActionSchema,
+  units: z.array(ScenarioUnitSchema),
+  selectedUnitId: z.string().uuid().optional(),
+  selectedHex: z.object({
+    column: z.number().int().min(0),
+    row: z.number().int().min(0),
+  }).optional(),
+});
+
+const GameSchema: z.ZodType<Game> = z.object({
+  gameId: z.string(),
+  title: z.string().optional(),
+  // Status is derived dynamically - not stored in database
+  scenarioId: z.string(),
+  scenarioSnapshot: ScenarioSchema, // Required: complete snapshot of scenario at creation time
+  player1: PlayerSchema,
+  player2: PlayerSchema.optional(),
+  player1Id: z.string(),
+  player2Id: z.string().optional(),
+  gameState: GameStateSchema,
+  createdAt: z.string(),
+  updatedAt: z.string().optional(),
 });
 
 const UserSchema = z.object({
@@ -91,6 +124,7 @@ export const contract = c.router({
     path: '/api/games',
     body: z.object({
       scenarioId: z.string(),
+      title: z.string().optional(),
     }),
     responses: {
       200: z.object({
@@ -176,6 +210,7 @@ export const contract = c.router({
     query: z.object({
       limit: z.string().regex(/^\d+$/).transform(Number).optional(),
       nextToken: z.string().optional(),
+      creatorId: z.string().optional(), // Filter by creator (user ID)
     }),
     responses: {
       200: z.object({
@@ -202,6 +237,7 @@ export const contract = c.router({
       rows: z.number().int().min(1),
       turns: z.number().int().min(1),
       hexes: z.array(HexSchema).optional(),
+      units: z.array(ScenarioUnitSchema).optional(),
     }),
     responses: {
       200: z.object({
@@ -250,6 +286,7 @@ export const contract = c.router({
       rows: z.number().int().min(1).optional(),
       turns: z.number().int().min(1).optional(),
       hexes: z.array(HexSchema).optional(),
+      units: z.array(ScenarioUnitSchema).optional(),
     }),
     responses: {
       200: z.object({

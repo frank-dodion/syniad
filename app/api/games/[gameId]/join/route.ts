@@ -37,10 +37,7 @@ export async function POST(
       return createErrorResponse(404, 'Game not found', user);
     }
 
-    if (game.status !== 'waiting') {
-      return createErrorResponse(400, `Game is not waiting for players (status: ${game.status})`, user);
-    }
-
+    // Check if game is waiting (no player2) - status is derived dynamically
     if (game.player2) {
       return createErrorResponse(400, 'Game already has two players', user);
     }
@@ -49,7 +46,7 @@ export async function POST(
       return createErrorResponse(400, 'Cannot join your own game', user);
     }
 
-    const playerName = user?.username || user?.email || `User-${userId.substring(0, 8)}`;
+    const playerName = user?.email || `User-${userId.substring(0, 8)}`;
     
     const updatedGame: Game = {
       ...game,
@@ -58,7 +55,7 @@ export async function POST(
         userId: userId
       },
       player2Id: userId,
-      status: 'active',
+      // Status is derived dynamically - no need to store it
       updatedAt: new Date().toISOString()
     };
     

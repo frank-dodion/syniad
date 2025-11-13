@@ -1,0 +1,9 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <polygon fill="#dc2626" stroke="#1f2937" stroke-width="1.5" opacity="1" points="20.22,14.17 18.11,17.83 13.89,17.83 11.78,14.17 13.89,10.51 18.11,10.51" />
+  <polygon fill="#4a90e2" stroke="#1f2937" stroke-width="1" opacity="0.85" points="20.22,6.86 18.11,10.51 13.89,10.51 11.78,6.86 13.89,3.20 18.11,3.20" />
+  <polygon fill="#5a8c5a" stroke="#1f2937" stroke-width="1" opacity="0.85" points="26.56,10.51 24.45,14.17 20.22,14.17 18.11,10.51 20.22,6.86 24.45,6.86" />
+  <polygon fill="#f4a460" stroke="#1f2937" stroke-width="1" opacity="0.85" points="26.56,17.83 24.45,21.49 20.22,21.49 18.11,17.83 20.22,14.17 24.45,14.17" />
+  <polygon fill="#8b7355" stroke="#1f2937" stroke-width="1" opacity="0.85" points="20.22,21.49 18.11,25.14 13.89,25.14 11.78,21.49 13.89,17.83 18.11,17.83" />
+  <polygon fill="#5a9a9a" stroke="#1f2937" stroke-width="1" opacity="0.85" points="13.89,17.83 11.78,21.49 7.55,21.49 5.44,17.83 7.55,14.17 11.78,14.17" />
+  <polygon fill="#d2b48c" stroke="#1f2937" stroke-width="1" opacity="0.85" points="13.89,10.51 11.78,14.17 7.55,14.17 5.44,10.51 7.55,6.86 11.78,6.86" />
+</svg>

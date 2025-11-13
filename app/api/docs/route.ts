@@ -1,9 +1,30 @@
 import { NextRequest } from 'next/server';
+import { extractUserIdentity } from '@/lib/api-auth';
 
-// GET /api/docs - Serve Swagger UI
+// GET /api/docs - Serve Swagger UI (requires authentication)
 export async function GET(request: NextRequest) {
   try {
-    // Always serve Swagger UI HTML for /api/docs
+    // Check authentication
+    const user = await extractUserIdentity(request);
+    
+    if (!user || !user.userId) {
+      // Redirect to login - preserve the docs URL for redirect after login
+      const currentUrl = new URL(request.url);
+      const redirectUrl = currentUrl.toString();
+      
+      // Construct Better Auth signin URL with callback
+      const baseURL = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3000';
+      const signinUrl = `${baseURL}/api/auth/signin/cognito?callbackURL=${encodeURIComponent(redirectUrl)}`;
+      
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': signinUrl,
+        },
+      });
+    }
+    
+    // User is authenticated - serve Swagger UI HTML
     // The OpenAPI spec is served at /api/docs/openapi.yaml
     const swaggerHtml = `<!DOCTYPE html>
 <html lang="en">
@@ -63,34 +84,9 @@ export async function GET(request: NextRequest) {
         onComplete: () => {
           // Auto-authorize with session token if available
           if (sessionToken) {
-            // For Bearer token auth, we need to set the authorization directly
-            // Swagger UI stores authorizations in its internal state
-            try {
-              // Use the preauthorizeApiKey method which works for Bearer tokens too
-              ui.preauthorizeApiKey('BearerAuth', sessionToken);
-              console.log('[Swagger UI] Pre-authorized with session token');
-            } catch (error) {
-              console.warn('[Swagger UI] Could not pre-authorize with preauthorizeApiKey:', error);
-              // Fallback: manually set authorization using authActions
-              try {
-                if (ui.getSystem && ui.getSystem().authActions) {
-                  ui.getSystem().authActions.authorize({
-                    BearerAuth: {
-                      name: 'BearerAuth',
-                      schema: {
-                        type: 'http',
-                        scheme: 'bearer',
-                        bearerFormat: 'JWT'
-                      },
-                      value: sessionToken
-                    }
-                  });
-                  console.log('[Swagger UI] Authorized using authActions');
-                }
-              } catch (fallbackError) {
-                console.warn('[Swagger UI] Could not authorize using authActions:', fallbackError);
-              }
-            }
+            // Use the preauthorizeApiKey method for Bearer token auth
+            ui.preauthorizeApiKey('BearerAuth', sessionToken);
+            console.log('[Swagger UI] Pre-authorized with session token');
           } else {
             console.warn('[Swagger UI] No session token available - user must log in');
           }

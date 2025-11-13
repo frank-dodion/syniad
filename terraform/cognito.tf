@@ -28,7 +28,31 @@ resource "aws_cognito_user_pool" "users" {
     }
   }
 
+  # Rate limiting and account lockout policies
+  # These help prevent brute force attacks but can be adjusted for development
+  user_pool_add_ons {
+    advanced_security_mode = "OFF" # Set to "ENFORCED" or "AUDIT" for production
+  }
+
+  # PreSignUp Lambda trigger for email domain allowlist
+  lambda_config {
+    pre_sign_up = aws_lambda_function.cognito_presignup.arn
+  }
+
+  # Note: Cognito has default rate limits that cannot be disabled:
+  # - 5 requests per second per user
+  # - 5 requests per second per IP
+  # These are AWS-managed and help prevent abuse
+  # If you hit "too many login attempts", wait 15 minutes and try again
+
   tags = local.common_tags
+
+  # Note: depends_on only includes Lambda function, not permission
+  # The permission references this user pool's ARN, creating a cycle if included
+  # Terraform will handle the permission creation after the user pool exists
+  depends_on = [
+    aws_lambda_function.cognito_presignup
+  ]
 }
 
 # Cognito User Pool Client (for frontend apps)
@@ -86,5 +110,59 @@ resource "aws_cognito_user_pool_client" "web_client" {
 resource "aws_cognito_user_pool_domain" "auth_domain" {
   domain       = "${local.service_name}-auth-${var.stage}"
   user_pool_id = aws_cognito_user_pool.users.id
+}
+
+# Build script trigger for Cognito PreSignUp Lambda
+resource "null_resource" "build_cognito_presignup_lambda" {
+  triggers = {
+    handler    = filesha256("${path.module}/../lambda-handlers/cognito-presignup/index.js")
+    package    = filesha256("${path.module}/../lambda-handlers/cognito-presignup/package.json")
+  }
+
+  provisioner "local-exec" {
+    command     = "cd ${path.module}/../lambda-handlers/cognito-presignup && npm install --production 2>&1 || echo 'No dependencies to install'"
+    interpreter = ["bash", "-c"]
+  }
+}
+
+# Archive file for Cognito PreSignUp Lambda
+data "archive_file" "cognito_presignup_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda-handlers/cognito-presignup"
+  output_path = "${path.module}/../lambda-handlers/cognito-presignup.zip"
+  excludes    = ["node_modules/.cache"]
+  
+  depends_on = [null_resource.build_cognito_presignup_lambda]
+}
+
+# Lambda function for Cognito PreSignUp trigger
+resource "aws_lambda_function" "cognito_presignup" {
+  function_name = "${local.service_name}-cognito-presignup"
+  role          = aws_iam_role.lambda_role.arn
+  handler       = "index.handler"
+  runtime       = "nodejs20.x"
+  timeout       = 10
+  memory_size   = 128
+
+  filename         = data.archive_file.cognito_presignup_zip.output_path
+  source_code_hash = data.archive_file.cognito_presignup_zip.output_base64sha256
+
+  environment {
+    variables = {
+      ALLOWED_DOMAINS = join(",", var.cognito_allowed_domains)
+      ALLOWED_EMAILS  = join(",", var.cognito_allowed_emails)
+    }
+  }
+
+  tags = local.common_tags
+}
+
+# Lambda permission for Cognito to invoke PreSignUp trigger
+resource "aws_lambda_permission" "cognito_presignup" {
+  statement_id  = "AllowExecutionFromCognito"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.cognito_presignup.function_name
+  principal     = "cognito-idp.amazonaws.com"
+  source_arn    = aws_cognito_user_pool.users.arn
 }
 

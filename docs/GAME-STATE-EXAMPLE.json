@@ -1,0 +1,143 @@
+{
+  "gameStateExample": {
+    "description": "This shows the structure of game state in JSON format",
+    
+    "gameState": {
+      "description": "Dynamic gameplay data - changes during gameplay",
+      "example": {
+        "turnNumber": 3,
+        "selectedHex": {
+          "column": 5,
+          "row": 7
+        }
+      }
+    },
+    
+    "fullGameObject": {
+      "description": "Complete game record as stored in DynamoDB",
+      "example": {
+        "gameId": "c65ed67f-ad88-4d87-abba-a77ec40ad10a",
+        "title": "Created at 11/12/2025, 10:30:00 AM",
+        "scenarioId": "abc123-scenario-id",
+        "scenarioSnapshot": {
+          "scenarioId": "abc123-scenario-id",
+          "title": "Battle of the Plains",
+          "description": "A tactical engagement on open terrain",
+          "columns": 12,
+          "rows": 10,
+          "turns": 15,
+          "hexes": [
+            {
+              "column": 0,
+              "row": 0,
+              "terrain": "clear",
+              "rivers": 0,
+              "roads": 0
+            },
+            {
+              "column": 1,
+              "row": 0,
+              "terrain": "forest",
+              "rivers": 0,
+              "roads": 0
+            }
+          ],
+          "units": [
+            {
+              "id": "unit-uuid-1",
+              "player": 1,
+              "combatStrength": 5,
+              "movementAllowance": 3,
+              "arm": "Infantry",
+              "column": 2,
+              "row": 3,
+              "status": "available"
+            },
+            {
+              "id": "unit-uuid-2",
+              "player": 2,
+              "combatStrength": 4,
+              "movementAllowance": 4,
+              "arm": "Cavalry",
+              "column": 8,
+              "row": 6,
+              "status": "available"
+            }
+          ],
+          "creatorId": "user-123",
+          "creator": {
+            "name": "player1@example.com",
+            "userId": "user-123"
+          },
+          "createdAt": "2025-11-12T09:00:00.000Z",
+          "updatedAt": "2025-11-12T09:00:00.000Z"
+        },
+        "player1": {
+          "name": "player1@example.com",
+          "userId": "user-123"
+        },
+        "player2": {
+          "name": "player2@example.com",
+          "userId": "user-456"
+        },
+        "player1Id": "user-123",
+        "player2Id": "user-456",
+        "gameState": {
+          "turnNumber": 3,
+          "selectedHex": {
+            "column": 5,
+            "row": 7
+          }
+        },
+        "createdAt": "2025-11-12T10:30:00.000Z",
+        "updatedAt": "2025-11-12T10:35:00.000Z"
+      }
+    },
+    
+    "broadcastMessage": {
+      "description": "What gets sent via WebSocket (scenarioSnapshot excluded to minimize payload)",
+      "example": {
+        "type": "gameStateUpdate",
+        "gameId": "c65ed67f-ad88-4d87-abba-a77ec40ad10a",
+        "action": "mapClick",
+        "gameState": {
+          "gameId": "c65ed67f-ad88-4d87-abba-a77ec40ad10a",
+          "title": "Created at 11/12/2025, 10:30:00 AM",
+          "scenarioId": "abc123-scenario-id",
+          "player1": {
+            "name": "player1@example.com",
+            "userId": "user-123"
+          },
+          "player2": {
+            "name": "player2@example.com",
+            "userId": "user-456"
+          },
+          "player1Id": "user-123",
+          "player2Id": "user-456",
+          "gameState": {
+            "turnNumber": 3,
+            "selectedHex": {
+              "column": 5,
+              "row": 7
+            }
+          },
+          "createdAt": "2025-11-12T10:30:00.000Z",
+          "updatedAt": "2025-11-12T10:35:00.000Z"
+        },
+        "timestamp": "2025-11-12T10:35:15.123Z"
+      }
+    },
+    
+    "gameStateOnly": {
+      "description": "Just the gameState object (nested inside game.gameState)",
+      "example": {
+        "turnNumber": 3,
+        "selectedHex": {
+          "column": 5,
+          "row": 7
+        }
+      }
+    }
+  }
+}
+

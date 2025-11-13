@@ -78,3 +78,13 @@ output "game_lambda_function_url" {
   value       = aws_lambda_function_url.game.function_url
 }
 
+output "websocket_api_endpoint" {
+  description = "WebSocket API Gateway endpoint URL"
+  value       = aws_apigatewayv2_api.websocket.api_endpoint
+}
+
+output "websocket_api_id" {
+  description = "WebSocket API Gateway ID"
+  value       = aws_apigatewayv2_api.websocket.id
+}
+

@@ -33,11 +33,57 @@ echo "=========================================="
 echo "Cleaning up any existing test container..."
 docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
 
-# Build Docker image
+# Ensure buildx is available - install if needed (for Colima)
+if ! docker buildx version >/dev/null 2>&1; then
+  echo "buildx not found, installing..."
+  
+  # Determine system architecture
+  ARCH=$(uname -m)
+  if [ "$ARCH" = "x86_64" ]; then
+    ARCH="amd64"
+  elif [ "$ARCH" = "arm64" ] || [ "$ARCH" = "aarch64" ]; then
+    ARCH="arm64"
+  fi
+  
+  # Use latest stable version
+  BUILDX_VERSION="v0.12.1"
+  
+  # Create CLI plugins directory
+  mkdir -p ~/.docker/cli-plugins
+  
+  # Download buildx binary
+  echo "Downloading buildx ${BUILDX_VERSION} for ${ARCH}..."
+  curl -L -o ~/.docker/cli-plugins/docker-buildx \
+    "https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.darwin-${ARCH}" 2>/dev/null
+  
+  if [ $? -eq 0 ] && [ -f ~/.docker/cli-plugins/docker-buildx ]; then
+    chmod +x ~/.docker/cli-plugins/docker-buildx
+    echo "✓ buildx installed successfully"
+  else
+    echo "❌ Failed to install buildx, falling back to legacy docker build"
+    echo "(Note: This will show a deprecation warning, but will still work)"
+    cd "$APP_DIR"
+    docker build --platform linux/amd64 -t "$IMAGE_NAME" .
+    if [ $? -ne 0 ]; then
+      echo "❌ Docker build failed!"
+      exit 1
+    fi
+    echo "✓ Docker image built successfully"
+    exit 0
+  fi
+fi
+
+# Create buildx builder instance if needed
+if ! docker buildx ls | grep -q "default"; then
+  echo "Creating buildx builder instance..."
+  docker buildx create --name default --use 2>/dev/null || docker buildx use default 2>/dev/null || true
+fi
+
+# Build Docker image using buildx
 echo ""
 echo "Building Docker image..."
 cd "$APP_DIR"
-docker build --platform linux/amd64 -t "$IMAGE_NAME" .
+docker buildx build --platform linux/amd64 -t "$IMAGE_NAME" --load .
 
 if [ $? -ne 0 ]; then
   echo "❌ Docker build failed!"

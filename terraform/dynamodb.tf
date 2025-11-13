@@ -92,6 +92,11 @@ resource "aws_dynamodb_table" "scenarios" {
     type = "S"
   }
 
+  attribute {
+    name = "creatorId"
+    type = "S"
+  }
+
   # GSI to query all scenarios efficiently (without Scan)
   # Uses constant partition key "ALL_SCENARIOS" and sorts by createdAt
   global_secondary_index {
@@ -101,8 +106,63 @@ resource "aws_dynamodb_table" "scenarios" {
     projection_type = "ALL" # Include all attributes in the index
   }
 
+  # GSI to query scenarios by creator (efficient "scenarios created by user" queries)
+  global_secondary_index {
+    name            = "creatorId-createdAt-index"
+    hash_key        = "creatorId"
+    range_key       = "createdAt"
+    projection_type = "ALL" # Include all attributes in the index
+  }
+
   tags = merge(local.common_tags, {
     Name = "${local.service_name}-scenarios"
+  })
+}
+
+# DynamoDB Table for WebSocket Connections
+# Stores active WebSocket connections for real-time game communication
+resource "aws_dynamodb_table" "websocket_connections" {
+  name           = "${local.service_name}-websocket-connections"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "connectionId"
+
+  attribute {
+    name = "connectionId"
+    type = "S"
+  }
+
+  attribute {
+    name = "gameId"
+    type = "S"
+  }
+
+  attribute {
+    name = "userId"
+    type = "S"
+  }
+
+  # GSI to query connections by gameId (find all players in a game)
+  global_secondary_index {
+    name            = "gameId-index"
+    hash_key        = "gameId"
+    projection_type = "ALL"
+  }
+
+  # GSI to query connections by userId (find all games a user is connected to)
+  global_secondary_index {
+    name            = "userId-index"
+    hash_key        = "userId"
+    projection_type = "ALL"
+  }
+
+  # TTL to automatically clean up stale connections
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "${local.service_name}-websocket-connections"
   })
 }
 

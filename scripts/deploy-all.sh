@@ -106,15 +106,27 @@ fi
 GAME_URL=$(terraform output -raw frontend_url 2>/dev/null || echo "")
 API_URL=$(terraform output -raw api_url 2>/dev/null || echo "")
 DIST_ID=$(terraform output -raw frontend_cloudfront_distribution_id 2>/dev/null || echo "")
+WEBSOCKET_ENDPOINT=$(terraform output -raw websocket_api_endpoint 2>/dev/null || echo "")
+WEBSOCKET_URL=""
+if [ -n "$WEBSOCKET_ENDPOINT" ]; then
+    # Remove wss:// prefix if present (Terraform output already includes it)
+    WEBSOCKET_ENDPOINT_CLEAN="${WEBSOCKET_ENDPOINT#wss://}"
+    # Construct full WebSocket URL with stage
+    WEBSOCKET_URL="wss://${WEBSOCKET_ENDPOINT_CLEAN}/${STAGE}"
+fi
 
 echo -e "${GREEN}Deployed Applications (${STAGE}):${NC}"
 if [ -n "$GAME_URL" ]; then
-    echo -e "  ${GREEN}✓${NC} Game App:        ${GAME_URL}"
-    echo -e "  ${GREEN}✓${NC} Scenario Editor: ${GAME_URL}/editor"
+    echo -e "  ${GREEN}✓${NC} Landing Page:    ${GAME_URL}"
+    echo -e "  ${GREEN}✓${NC} Game:            ${GAME_URL}/game"
+    echo -e "  ${GREEN}✓${NC} Scenario Editor: ${GAME_URL}/scenario"
 fi
 if [ -n "$API_URL" ]; then
     echo -e "  ${GREEN}✓${NC} API:             ${API_URL}"
     echo -e "  ${GREEN}✓${NC} API Docs:        ${API_URL}/docs"
+fi
+if [ -n "$WEBSOCKET_URL" ]; then
+    echo -e "  ${GREEN}✓${NC} WebSocket:       ${WEBSOCKET_URL}"
 fi
 if [ -n "$DIST_ID" ]; then
     echo -e "  ${GREEN}✓${NC} CloudFront ID:   ${DIST_ID}"

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { extractUserIdentity } from '@/lib/api-auth';
 import { getScenario, updateScenario, deleteScenario } from '@/lib/api-db';
-import { Scenario, Hex } from '@/shared/types';
+import { Scenario, Hex, TerrainType } from '@/shared/types';
 import { contract } from '@/shared/contract';
 import {
   validatePathParams,
@@ -82,7 +82,7 @@ export async function PUT(
       return createErrorResponse(400, bodyValidation.error, user);
     }
 
-    const { title, description, columns, rows, turns, hexes } = bodyValidation.data;
+    const { title, description, columns, rows, turns, hexes, units } = bodyValidation.data;
     
     // Ensure existing hexes have rivers property (migration for backward compatibility)
     const existingHexes = existing.hexes ? existing.hexes.map(hex => ({
@@ -99,6 +99,7 @@ export async function PUT(
       rows: rows !== undefined ? rows : existing.rows,
       turns: turns !== undefined ? turns : existing.turns,
       hexes: hexes !== undefined ? hexes : existingHexes,
+      units: units !== undefined ? units : existing.units,
       updatedAt: new Date().toISOString()
     };
     
@@ -117,7 +118,7 @@ export async function PUT(
         for (let col = 0; col < updatedScenario.columns; col++) {
           const key = `${row},${col}`;
           const providedHex = hexMap.get(key);
-          allHexes.push(providedHex || { row, column: col, terrain: 'clear', rivers: 0, roads: 0 });
+          allHexes.push(providedHex || { column: col, row, terrain: TerrainType.Clear, rivers: 0, roads: 0 });
         }
       }
       updatedScenario.hexes = allHexes;

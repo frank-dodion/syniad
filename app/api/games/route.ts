@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { extractUserIdentity } from '@/lib/api-auth';
 import { saveGame, getAllGames } from '@/lib/api-db';
 import { v4 as uuidv4 } from 'uuid';
-import { Game } from '@/shared/types';
+import { Game, Scenario, PlayerNumber, GamePhase, GameAction, UnitStatus } from '@/shared/types';
 import { contract } from '@/shared/contract';
 import {
   validateRequestBody,
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(400, validation.error, user);
     }
 
-    const { scenarioId } = validation.data;
+    const { scenarioId, title } = validation.data;
     
     // Import getScenario from api-db
     const { getScenario } = await import('@/lib/api-db');
@@ -41,20 +41,59 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(400, `Scenario not found: ${scenarioId}`, user);
     }
     
-    const playerName = user.username || user.email || `User-${user.userId.substring(0, 8)}`;
+    // Create a deep copy of the scenario as a snapshot
+    // This ensures the game is not affected by future changes to the original scenario
+    const scenarioSnapshot: Scenario = {
+      scenarioId: scenario.scenarioId,
+      title: scenario.title,
+      description: scenario.description,
+      columns: scenario.columns,
+      rows: scenario.rows,
+      turns: scenario.turns,
+      hexes: scenario.hexes ? [...scenario.hexes] : undefined,
+      units: scenario.units ? scenario.units.map(unit => ({ ...unit })) : undefined,
+      creatorId: scenario.creatorId, // Copy creator ID from original scenario
+      creator: scenario.creator ? { ...scenario.creator } : undefined, // Copy creator info if present
+      createdAt: scenario.createdAt,
+      updatedAt: scenario.updatedAt,
+      // Note: queryKey is not included in snapshot as it's only for scenario queries
+    };
+    
+    const playerName = user.email || `User-${user.userId.substring(0, 8)}`;
+    
+    // Default title to "Created at [date/time]" if not provided
+    const createdAt = new Date();
+    const defaultTitle = `Created at ${createdAt.toLocaleString()}`;
+    const gameTitle = title || defaultTitle;
     
     const gameId = uuidv4();
+    const initialActivePlayer = PlayerNumber.Player1;
+    const initialUnits = (scenarioSnapshot.units || []).map(unit => ({
+      ...unit,
+      status: (unit.player === initialActivePlayer ? 'available' : 'unavailable') as UnitStatus,
+      startingColumn: unit.column,
+      startingRow: unit.row,
+    }));
+
     const game: Game = {
       gameId,
-      status: 'waiting',
-      scenarioId,
+      title: gameTitle,
+      // Status is derived dynamically - no need to store it
+      scenarioId, // Kept for reference/audit, but never used to fetch scenario after creation
+      scenarioSnapshot, // Complete snapshot - games use this exclusively
       player1: { 
         name: playerName, 
         userId: user.userId
       },
       player1Id: user.userId,
-      turnNumber: 1,
-      createdAt: new Date().toISOString()
+      gameState: {
+        turnNumber: 1,
+        activePlayer: PlayerNumber.Player1,
+        phase: GamePhase.Movement,
+        action: GameAction.SelectUnit,
+        units: initialUnits,
+      },
+      createdAt: createdAt.toISOString()
     };
     
     await saveGame(game);
@@ -97,6 +136,11 @@ export async function GET(request: NextRequest) {
     
     if (limit && (limit < 1 || limit > 100)) {
       return createErrorResponse(400, 'limit must be between 1 and 100', user);
+    }
+    
+    // Require at least one filter to avoid expensive scans
+    if (!playerId && !player1Id && !player2Id) {
+      return createErrorResponse(400, 'At least one filter parameter (playerId, player1Id, or player2Id) must be provided', user);
     }
     
     const result = await getAllGames(limit, nextToken, playerId, player1Id, player2Id);
